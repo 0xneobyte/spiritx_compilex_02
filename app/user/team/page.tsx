@@ -93,15 +93,12 @@ export default function TeamPage() {
 
   const addPlayerToTeam = async (playerId: string) => {
     try {
-      // Find the player to get their value (calculated if needed)
-      const playerToAdd = allPlayers.find((p) => p._id === playerId);
-      if (!playerToAdd) {
-        throw new Error("Player not found");
-      }
-
-      // Get the actual value that should be used (from DB or calculated)
+      // Find the player to get their value
+      const playerToAdd = allPlayers.find(p => p._id === playerId);
+      if (!playerToAdd) return;
+      
       const playerValue = getPlayerValue(playerToAdd);
-
+      
       // Check if there's enough budget
       if (budget < playerValue) {
         toast.error("Insufficient budget to add this player");
@@ -110,34 +107,16 @@ export default function TeamPage() {
 
       const response = await fetch("/api/user/team/add", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          playerId,
-          playerValue: playerValue, // Send the calculated value to ensure consistency
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playerId, playerValue }),
       });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Failed to add player");
 
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to add player");
-      }
-
-      // Update the local state
+      // Update local state
       setUserTeam([...userTeam, playerToAdd]);
-
-      // Update budget by subtracting the player's value
-      setBudget((prevBudget) => prevBudget - playerValue);
-
-      // Check if team is complete
-      if (userTeam.length + 1 === 11) {
-        // Refresh to get the team points calculation
-        const teamResponse = await fetch("/api/user/team");
-        const teamData = await teamResponse.json();
-        setTeamPoints(teamData.teamPoints);
-      }
+      setBudget(prevBudget => prevBudget - playerValue);
 
       toast.success("Player added to your team");
     } catch (err: any) {
@@ -147,42 +126,24 @@ export default function TeamPage() {
 
   const removePlayerFromTeam = async (playerId: string) => {
     try {
-      // Find the player to get their value (calculated if needed)
-      const playerToRemove = userTeam.find((p) => p._id === playerId);
-      if (!playerToRemove) {
-        throw new Error("Player not found in your team");
-      }
+      // Find the player to get their value
+      const playerToRemove = userTeam.find(p => p._id === playerId);
+      if (!playerToRemove) return;
 
-      // Get the actual value that should be used (from DB or calculated)
       const playerValue = getPlayerValue(playerToRemove);
 
       const response = await fetch("/api/user/team/remove", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          playerId,
-          playerValue: playerValue, // Send the calculated value to ensure consistency
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playerId, playerValue }),
       });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Failed to remove player");
 
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to remove player");
-      }
-
-      // Update the local state
+      // Update local state
       setUserTeam(userTeam.filter((p) => p._id !== playerId));
-
-      // Update budget by adding back the player's value
-      setBudget((prevBudget) => prevBudget + playerValue);
-
-      // Reset team points if team is no longer complete
-      if (userTeam.length <= 11) {
-        setTeamPoints(null);
-      }
+      setBudget(prevBudget => prevBudget + playerValue);
 
       toast.success("Player removed from your team");
     } catch (err: any) {
@@ -192,39 +153,20 @@ export default function TeamPage() {
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case "Batsman":
-        return "bg-blue-50 text-blue-700 border-2 border-blue-400 hover:border-blue-500 hover:bg-blue-100 transition-colors";
-      case "Bowler":
-        return "bg-green-50 text-green-700 border-2 border-green-400 hover:border-green-500 hover:bg-green-100 transition-colors";
-      case "All-Rounder":
-        return "bg-purple-50 text-purple-700 border-2 border-purple-400 hover:border-purple-500 hover:bg-purple-100 transition-colors";
-      default:
-        return "bg-gray-50 text-gray-700 border-2 border-gray-400 hover:border-gray-500 hover:bg-gray-100 transition-colors";
+      case "Batsman": return "bg-blue-50 text-blue-700 border border-blue-300";
+      case "Bowler": return "bg-green-50 text-green-700 border border-green-300";
+      case "All-Rounder": return "bg-purple-50 text-purple-700 border border-purple-300";
+      default: return "bg-gray-50 text-gray-700 border border-gray-300";
     }
   };
 
   const getPlayerInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase();
+    return name.split(" ").map(part => part[0]).join("").toUpperCase();
   };
 
   const getAvatarColor = (name: string) => {
-    const colors = [
-      "bg-red-500",
-      "bg-blue-500",
-      "bg-green-500",
-      "bg-yellow-500",
-      "bg-purple-500",
-      "bg-pink-500",
-      "bg-indigo-500",
-    ];
-
-    const hash = name
-      .split("")
-      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const colors = ["bg-red-500", "bg-blue-500", "bg-green-500", "bg-yellow-500", "bg-purple-500", "bg-pink-500", "bg-indigo-500"];
+    const hash = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return colors[hash % colors.length];
   };
 
@@ -232,298 +174,160 @@ export default function TeamPage() {
     return userTeam.some((player) => player._id === playerId);
   };
 
-  // Calculate batting strike rate on the fly
-  const calculateBattingStrikeRate = (player: Player) => {
-    if (!player.ballsFaced || player.ballsFaced === 0) return 0;
-    return (player.totalRuns / player.ballsFaced) * 100;
-  };
-
-  // Calculate batting average on the fly
-  const calculateBattingAverage = (player: Player) => {
-    if (!player.inningsPlayed || player.inningsPlayed === 0) return 0;
-    return player.totalRuns / player.inningsPlayed;
-  };
-
-  // Calculate bowling strike rate on the fly
-  const calculateBowlingStrikeRate = (player: Player) => {
-    if (!player.wickets || player.wickets === 0) return 0;
-    const ballsBowled = Math.floor(player.oversBowled * 6);
-    return ballsBowled > 0 ? ballsBowled / player.wickets : 0;
-  };
-
-  // Calculate economy rate on the fly
-  const calculateEconomyRate = (player: Player) => {
-    if (!player.oversBowled || player.oversBowled === 0) return 0;
-    return player.runsConceded / player.oversBowled;
-  };
-
-  // Calculate player points on the fly
-  const calculatePlayerPoints = (player: Player) => {
+  // Calculate player value
+  const getPlayerValue = (player: Player) => {
+    if (player.value > 0) return player.value;
+    
+    // Calculate stats
+    const battingStrikeRate = player.battingStrikeRate > 0 
+      ? player.battingStrikeRate 
+      : player.ballsFaced > 0 ? (player.totalRuns / player.ballsFaced) * 100 : 0;
+      
+    const battingAverage = player.battingAverage > 0 
+      ? player.battingAverage 
+      : player.inningsPlayed > 0 ? player.totalRuns / player.inningsPlayed : 0;
+      
+    const bowlingStrikeRate = player.bowlingStrikeRate > 0 
+      ? player.bowlingStrikeRate 
+      : (player.wickets > 0 && player.oversBowled > 0) ? Math.floor(player.oversBowled * 6) / player.wickets : 0;
+      
+    const economyRate = player.economyRate > 0 
+      ? player.economyRate 
+      : player.oversBowled > 0 ? player.runsConceded / player.oversBowled : 0;
+    
+    // Calculate points
     let points = 0;
-
-    // Get batting strike rate
-    const battingStrikeRate =
-      player.battingStrikeRate > 0
-        ? player.battingStrikeRate
-        : calculateBattingStrikeRate(player);
-
-    // Get batting average
-    const battingAverage =
-      player.battingAverage > 0
-        ? player.battingAverage
-        : calculateBattingAverage(player);
-
-    // Get bowling strike rate
-    const bowlingStrikeRate =
-      player.bowlingStrikeRate > 0
-        ? player.bowlingStrikeRate
-        : calculateBowlingStrikeRate(player);
-
-    // Get economy rate
-    const economyRate =
-      player.economyRate > 0
-        ? player.economyRate
-        : calculateEconomyRate(player);
-
-    // Calculate points using the same formula as the model
     if (battingStrikeRate > 0) {
       points += battingStrikeRate / 5 + battingAverage * 0.8;
     }
-
     if (bowlingStrikeRate > 0 && bowlingStrikeRate < 999) {
       points += 500 / bowlingStrikeRate;
     }
-
     if (economyRate > 0) {
       points += 140 / economyRate;
     }
-
-    return points;
-  };
-
-  // Calculate player value on the fly
-  const getPlayerValue = (player: Player) => {
-    if (player.value > 0) return player.value;
-
-    const points = calculatePlayerPoints(player);
-
-    // Calculate value using the same formula as the model
+    
+    // Calculate value
     return Math.round(((9 * points + 100) * 1000) / 50000) * 50000;
   };
 
   if (error) {
     return (
-      <div className="min-h-screen p-8 flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-red-600">Error</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>{error}</p>
-          </CardContent>
-          <CardFooter>
-            <button
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md"
-              onClick={() => router.refresh()}
-            >
-              Try Again
-            </button>
-          </CardFooter>
-        </Card>
+      <div className="p-4">
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <h3 className="font-medium text-red-800">Error</h3>
+          <p className="text-red-700">{error}</p>
+          <button className="mt-2 px-3 py-1 bg-red-700 text-white rounded-md" onClick={() => router.refresh()}>Try Again</button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8">
+    <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="flex flex-wrap justify-between items-center mb-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Select Your Team</h1>
+          <h1 className="text-2xl font-bold">Select Your Team</h1>
           <p className="text-gray-600">{userTeam.length}/11 players selected</p>
         </div>
-
-        <div className="mt-4 md:mt-0">
-          <div className="rounded-lg border p-4 bg-white shadow-sm">
-            <p className="text-gray-700 font-medium">
-              Budget:{" "}
-              <span className="font-bold text-indigo-600">
-                {formatCurrency(budget)}
-              </span>
-            </p>
-          </div>
+        
+        <div className="mt-2 bg-white border rounded-md px-3 py-2">
+          <p className="text-gray-700 font-medium">
+            Budget: <span className="font-bold text-indigo-600">{formatCurrency(budget)}</span>
+          </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Team Members Section */}
-        <div className="md:col-span-1">
-          <Card className="bg-white border shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle>Team Members</CardTitle>
-              <CardDescription>Your selected players</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {userTeam.length === 0 ? (
-                <p className="text-gray-500 text-center py-12">
-                  No players in your team yet
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {userTeam.map((player) => (
-                    <div
-                      key={player._id}
-                      className="flex items-center justify-between bg-gray-50 rounded-lg p-3"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${getAvatarColor(
-                            player.name
-                          )}`}
-                        >
-                          {getPlayerInitials(player.name)}
-                        </div>
-                        <div>
-                          <h3 className="font-medium">{player.name}</h3>
-                          <Badge
-                            className={`${getCategoryColor(
-                              player.category
-                            )} text-xs`}
-                          >
-                            {player.category}
-                          </Badge>
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => removePlayerFromTeam(player._id)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+      <div className="bg-white border rounded-lg p-4">
+        <div className="mb-4">
+          <h2 className="font-medium mb-2">Select Players</h2>
+          <p className="text-sm text-gray-600 mb-3">Add players to complete your team</p>
+          
+          <Tabs defaultValue="All" onValueChange={setSelectedCategory}>
+            <TabsList className="grid grid-cols-4 w-full">
+              <TabsTrigger value="All">All</TabsTrigger>
+              <TabsTrigger value="Batsman">Batsmen</TabsTrigger>
+              <TabsTrigger value="Bowler">Bowlers</TabsTrigger>
+              <TabsTrigger value="All-Rounder">All-Rounders</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
-        {/* Player Selection Section */}
-        <div className="md:col-span-2">
-          <Card className="bg-white border shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle>Select Players</CardTitle>
-              <CardDescription>
-                Add players to complete your team
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="mb-6">
-                <Tabs
-                  defaultValue="All"
-                  onValueChange={setSelectedCategory}
-                  className="w-full"
-                >
-                  <TabsList className="grid grid-cols-4">
-                    <TabsTrigger value="All">All</TabsTrigger>
-                    <TabsTrigger value="Batsman">Batsmen</TabsTrigger>
-                    <TabsTrigger value="Bowler">Bowlers</TabsTrigger>
-                    <TabsTrigger value="All-Rounder">All-Rounders</TabsTrigger>
-                  </TabsList>
-                </Tabs>
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {[...Array(6)].map((_, index) => (
+              <div key={index} className="border rounded-lg p-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div>
+                    <Skeleton className="h-4 w-28 mb-1" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+                <Skeleton className="h-8 w-16" />
               </div>
-
-              {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {[...Array(6)].map((_, index) => (
-                    <div key={index} className="border rounded-lg p-4">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <Skeleton className="h-10 w-10 rounded-full" />
-                        <div>
-                          <Skeleton className="h-4 w-28 mb-1" />
-                          <Skeleton className="h-3 w-20" />
-                        </div>
-                      </div>
-                      <Skeleton className="h-6 w-full mt-2" />
-                      <div className="flex justify-between mt-3">
-                        <Skeleton className="h-8 w-24" />
-                        <Skeleton className="h-8 w-16" />
-                      </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {allPlayers.map((player) => (
+              <div key={player._id} className="border rounded-lg p-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${getAvatarColor(player.name)}`}>
+                    {getPlayerInitials(player.name)}
+                  </div>
+                  <div>
+                    <h3 className="font-medium">{player.name}</h3>
+                    <p className="text-sm text-gray-600">{player.university}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge className={`${getCategoryColor(player.category)} text-xs px-2 py-0.5`}>
+                        {player.category}
+                      </Badge>
+                      <span className="text-sm font-medium">{formatCurrency(getPlayerValue(player))}</span>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {allPlayers.map((player) => (
-                    <div
-                      key={player._id}
-                      className="border rounded-lg overflow-hidden"
-                    >
-                      <div className="p-4">
-                        <div className="flex items-start gap-3">
-                          <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center text-white flex-shrink-0 ${getAvatarColor(
-                              player.name
-                            )}`}
-                          >
-                            {getPlayerInitials(player.name)}
-                          </div>
-                          <div>
-                            <h3 className="font-medium">{player.name}</h3>
-                            <p className="text-sm text-gray-600 mt-1">
-                              {player.university}
-                            </p>
-                            <Badge
-                              className={`${getCategoryColor(
-                                player.category
-                              )} text-xs mt-1`}
-                            >
-                              {player.category}
-                            </Badge>
-                            <p className="text-sm font-medium text-gray-700 mt-1">
-                              {formatCurrency(getPlayerValue(player))}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex justify-end mt-3">
-                          <Button
-                            size="sm"
-                            variant={
-                              isPlayerInTeam(player._id)
-                                ? "destructive"
-                                : "default"
-                            }
-                            onClick={() =>
-                              isPlayerInTeam(player._id)
-                                ? removePlayerFromTeam(player._id)
-                                : addPlayerToTeam(player._id)
-                            }
-                            disabled={
-                              !isPlayerInTeam(player._id) &&
-                              (userTeam.length >= 11 ||
-                                budget < getPlayerValue(player))
-                            }
-                          >
-                            {isPlayerInTeam(player._id) ? "Remove" : "Add"}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                
+                <button 
+                  className={`px-3 py-1 text-sm rounded-md ${
+                    isPlayerInTeam(player._id)
+                      ? "bg-red-500 text-white hover:bg-red-600"
+                      : userTeam.length >= 11 || budget < getPlayerValue(player)
+                      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                      : "bg-indigo-600 text-white hover:bg-indigo-700"
+                  }`}
+                  onClick={() => isPlayerInTeam(player._id) 
+                    ? removePlayerFromTeam(player._id) 
+                    : addPlayerToTeam(player._id)
+                  }
+                  disabled={!isPlayerInTeam(player._id) && (userTeam.length >= 11 || budget < getPlayerValue(player))}
+                >
+                  {isPlayerInTeam(player._id) ? "Remove" : "Add"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
-              {!loading && allPlayers.length === 0 && (
-                <div className="text-center py-12">
-                  <p className="text-gray-500 text-lg">
-                    No players found in this category
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        {!loading && allPlayers.length === 0 && (
+          <div className="text-center py-8">
+            <p className="text-gray-500">No players found in this category</p>
+          </div>
+        )}
+        
+        {userTeam.length === 11 && (
+          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md text-center">
+            <p className="text-green-700">
+              Your team is complete! 
+              <button 
+                className="ml-1 text-green-700 font-medium hover:underline"
+                onClick={() => router.push('/user/myteam')}
+              >
+                View your team details
+              </button>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -14,8 +14,12 @@ export async function GET(req: NextRequest) {
 
     await connectToDB();
 
-    // Find the user and populate their team
-    const user = await User.findById(auth.user.id).populate("team");
+    // Find the user and populate their team with all fields
+    const user = await User.findById(auth.user.id).populate({
+      path: "team",
+      select:
+        "_id name university category value totalRuns ballsFaced inningsPlayed wickets oversBowled runsConceded battingStrikeRate battingAverage bowlingStrikeRate economyRate points",
+    });
 
     if (!user) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });

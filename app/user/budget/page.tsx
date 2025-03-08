@@ -17,6 +17,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -30,6 +31,16 @@ interface Player {
   university: string;
   category: string;
   value: number;
+  totalRuns?: number;
+  ballsFaced?: number;
+  inningsPlayed?: number;
+  wickets?: number;
+  oversBowled?: number;
+  runsConceded?: number;
+  battingStrikeRate?: number;
+  battingAverage?: number;
+  bowlingStrikeRate?: number;
+  economyRate?: number;
 }
 
 export default function BudgetPage() {
@@ -55,7 +66,7 @@ export default function BudgetPage() {
 
         // Calculate the initial budget (current budget + sum of player values)
         const spentBudget = data.team.reduce(
-          (total: number, player: Player) => total + player.value,
+          (total: number, player: Player) => total + getPlayerValue(player),
           0
         );
         setInitialBudget(data.budget + spentBudget);
@@ -68,6 +79,56 @@ export default function BudgetPage() {
 
     fetchUserTeam();
   }, []);
+
+  // Calculate player value (same logic as in Team pages)
+  const getPlayerValue = (player: Player) => {
+    if (player.value > 0) return player.value;
+
+    // Calculate stats
+    const battingStrikeRate =
+      player.battingStrikeRate ||
+      (player.ballsFaced && player.ballsFaced > 0
+        ? ((player.totalRuns || 0) / player.ballsFaced) * 100
+        : 0);
+
+    const battingAverage =
+      player.battingAverage ||
+      (player.inningsPlayed && player.inningsPlayed > 0
+        ? (player.totalRuns || 0) / player.inningsPlayed
+        : 0);
+
+    const bowlingStrikeRate =
+      player.bowlingStrikeRate ||
+      (player.wickets &&
+      player.wickets > 0 &&
+      player.oversBowled &&
+      player.oversBowled > 0
+        ? Math.floor(player.oversBowled * 6) / player.wickets
+        : 0);
+
+    const economyRate =
+      player.economyRate ||
+      (player.oversBowled &&
+      player.oversBowled > 0 &&
+      player.runsConceded !== undefined
+        ? player.runsConceded / player.oversBowled
+        : 0);
+
+    // Calculate points
+    let points = 0;
+    if (battingStrikeRate > 0) {
+      points += battingStrikeRate / 5 + battingAverage * 0.8;
+    }
+    if (bowlingStrikeRate > 0 && bowlingStrikeRate < 999) {
+      points += 500 / bowlingStrikeRate;
+    }
+    if (economyRate > 0) {
+      points += 140 / economyRate;
+    }
+
+    // Calculate value
+    return Math.round(((9 * points + 100) * 1000) / 50000) * 50000;
+  };
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -227,8 +288,9 @@ export default function BudgetPage() {
                   </TableHeader>
                   <TableBody>
                     {userTeam.map((player) => {
+                      const playerValue = getPlayerValue(player);
                       const percentOfBudget = (
-                        (player.value / initialBudget) *
+                        (playerValue / initialBudget) *
                         100
                       ).toFixed(1);
 
@@ -245,7 +307,7 @@ export default function BudgetPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            {formatCurrency(player.value)}
+                            {formatCurrency(playerValue)}
                           </TableCell>
                           <TableCell className="text-right">
                             {percentOfBudget}%
@@ -254,20 +316,22 @@ export default function BudgetPage() {
                       );
                     })}
                   </TableBody>
+                  <TableFooter>
+                    <TableRow>
+                      <TableCell colSpan={2} className="font-semibold">
+                        {userTeam.length} players in your team
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
+                        Total Spent: {formatCurrency(spentBudget)}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
+                        {spentPercentage.toFixed(1)}%
+                      </TableCell>
+                    </TableRow>
+                  </TableFooter>
                 </Table>
               )}
             </CardContent>
-            {userTeam.length > 0 && (
-              <CardFooter className="flex justify-between">
-                <div className="text-sm text-gray-500">
-                  {userTeam.length} player{userTeam.length === 1 ? "" : "s"} in
-                  your team
-                </div>
-                <div className="text-sm font-medium">
-                  Total Spent: {formatCurrency(spentBudget)}
-                </div>
-              </CardFooter>
-            )}
           </Card>
         </div>
       </div>
