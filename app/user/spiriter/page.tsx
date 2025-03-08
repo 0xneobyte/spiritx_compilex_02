@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   role: "user" | "assistant";
@@ -12,7 +13,8 @@ export default function SpiriterPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hi! I'm Spiriter, your cricket assistant powered by Google Gemini. Ask me about players, stats, or for team recommendations!",
+      content:
+        "Hi! I'm Spiriter, your cricket assistant powered by Google Gemini. Ask me about players, stats, or for team recommendations!",
     },
   ]);
   const [input, setInput] = useState("");
@@ -32,25 +34,22 @@ export default function SpiriterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!input.trim()) return;
-    
+
     // Add user message to chat
     const userMessage = { role: "user" as const, content: input };
     setMessages((prev) => [...prev, userMessage]);
-    
+
     // Clear input
     setInput("");
-    
+
     try {
       setIsLoading(true);
-      
-      // Add typing indicator 
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "..." },
-      ]);
-      
+
+      // Add typing indicator
+      setMessages((prev) => [...prev, { role: "assistant", content: "..." }]);
+
       // Send request to API
       const response = await fetch("/api/user/spiriter", {
         method: "POST",
@@ -59,13 +58,13 @@ export default function SpiriterPage() {
         },
         body: JSON.stringify({ message: input }),
       });
-      
+
       if (!response.ok) {
         throw new Error("Failed to get response from Spiriter");
       }
-      
+
       const data = await response.json();
-      
+
       // Replace typing indicator with actual response
       setMessages((prev) => [
         ...prev.slice(0, -1), // Remove the typing indicator
@@ -74,13 +73,14 @@ export default function SpiriterPage() {
     } catch (error) {
       console.error("Error getting response:", error);
       toast.error("Sorry, I couldn't process your request. Please try again.");
-      
+
       // Replace typing indicator with error message
       setMessages((prev) => [
         ...prev.slice(0, -1), // Remove the typing indicator
         {
           role: "assistant",
-          content: "Sorry, I'm having trouble processing your request right now. Please try again later.",
+          content:
+            "Sorry, I'm having trouble processing your request right now. Please try again later.",
         },
       ]);
     } finally {
@@ -90,7 +90,7 @@ export default function SpiriterPage() {
     }
   };
 
-  // Suggestions for users - using questions related to our dataset
+  // Suggestions for users
   const suggestions = [
     "Who are the players from University of Colombo?",
     "Can you suggest the best possible team?",
@@ -132,10 +132,11 @@ export default function SpiriterPage() {
             </span>
           </h1>
           <p className="text-sm text-indigo-200">
-            Ask me about player details, statistics, or for team recommendations!
+            Ask me about player details, statistics, or for team
+            recommendations!
           </p>
         </div>
-        
+
         <div className="flex-grow overflow-auto p-4 bg-gray-50">
           {messages.length === 0 ? (
             <div className="p-4 rounded-lg border bg-white animate-pulse">
@@ -165,14 +166,25 @@ export default function SpiriterPage() {
                   >
                     {message.content === "..." ? (
                       <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-gray-600 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
-                        <div className="w-2 h-2 bg-gray-600 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
-                        <div className="w-2 h-2 bg-gray-600 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
+                        <div
+                          className="w-2 h-2 bg-gray-600 rounded-full animate-bounce"
+                          style={{ animationDelay: "0ms" }}
+                        ></div>
+                        <div
+                          className="w-2 h-2 bg-gray-600 rounded-full animate-bounce"
+                          style={{ animationDelay: "150ms" }}
+                        ></div>
+                        <div
+                          className="w-2 h-2 bg-gray-600 rounded-full animate-bounce"
+                          style={{ animationDelay: "300ms" }}
+                        ></div>
+                      </div>
+                    ) : message.role === "assistant" ? (
+                      <div className="markdown prose-sm max-w-none">
+                        <ReactMarkdown>{message.content}</ReactMarkdown>
                       </div>
                     ) : (
-                      message.content.split('\n').map((line, i) => (
-                        <p key={i}>{line || <br />}</p>
-                      ))
+                      <p>{message.content}</p>
                     )}
                   </div>
                 </div>
@@ -181,7 +193,7 @@ export default function SpiriterPage() {
             </div>
           )}
         </div>
-        
+
         {/* Suggestions */}
         <div className="p-2 border-t border-gray-200 bg-gray-50">
           <p className="text-xs text-gray-500 mb-2 font-medium">Try asking:</p>
@@ -198,7 +210,7 @@ export default function SpiriterPage() {
             ))}
           </div>
         </div>
-        
+
         <div className="p-4 border-t">
           <form onSubmit={handleSubmit} className="flex gap-2">
             <input
@@ -264,4 +276,4 @@ export default function SpiriterPage() {
       </div>
     </div>
   );
-} 
+}
