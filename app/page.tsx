@@ -179,7 +179,7 @@ export default function Home() {
                 icon: <Zap className="h-6 w-6 text-purple-400" />,
               },
               {
-                number: "₹50L+",
+                number: "Rs 50M+",
                 label: "Prize Pool",
                 icon: <Trophy className="h-6 w-6 text-purple-400" />,
               },
