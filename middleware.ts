@@ -15,8 +15,10 @@ export function middleware(request: NextRequest) {
   const isAdminRoute = pathname.startsWith("/admin");
 
   // API routes that don't require authentication
-  const publicApiRoutes = ["/api/auth/login", "/api/auth/signup"];
-  const isPublicApiRoute = publicApiRoutes.some((route) => pathname === route);
+  const publicApiRoutes = ["/api/auth/login", "/api/auth/signup", "/api/seed"];
+  const isPublicApiRoute = publicApiRoutes.some(
+    (route) => pathname === route || pathname.startsWith(route)
+  );
 
   // If it's a public route or public API route, allow access
   if (isPublicRoute || isPublicApiRoute) {
