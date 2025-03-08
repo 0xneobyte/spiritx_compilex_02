@@ -1008,14 +1008,6 @@ export default function PlayerStats() {
                       <TableRow key={player._id}>
                         <TableCell className="font-medium">
                           {player.name}
-                          {player.isFromOriginalDataset && (
-                            <Badge
-                              variant="outline"
-                              className="ml-2 bg-blue-50"
-                            >
-                              DS
-                            </Badge>
-                          )}
                         </TableCell>
                         <TableCell>{player.university}</TableCell>
                         <TableCell>
