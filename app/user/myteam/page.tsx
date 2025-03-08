@@ -291,9 +291,6 @@ export default function TeamPage() {
                         {player.university}
                       </p>
                     </div>
-                    <p className="text-sm font-medium">
-                      Points: {calculatePlayerPoints(player).toFixed(1)}
-                    </p>
                   </div>
 
                   <div className="flex justify-between items-center mt-2">

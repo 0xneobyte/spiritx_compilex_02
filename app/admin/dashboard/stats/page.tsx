@@ -853,7 +853,6 @@ export default function PlayerStats() {
                     Batting Average
                   </SelectItem>
                   <SelectItem value="economyRate">Economy Rate</SelectItem>
-                  <SelectItem value="points">Points</SelectItem>
                   <SelectItem value="value">Value</SelectItem>
                 </SelectContent>
               </Select>
@@ -1000,14 +999,6 @@ export default function PlayerStats() {
                       </span>
                     </TableHead>
                     <TableHead
-                      className="text-right cursor-pointer w-[120px] sticky top-0 hover:bg-accent/10 transition-colors"
-                      onClick={() => handleSort("points")}
-                    >
-                      <span className="flex items-center gap-2">
-                        Points {getSortIndicator("points")}
-                      </span>
-                    </TableHead>
-                    <TableHead
                       className="text-right cursor-pointer w-[150px] sticky top-0 hover:bg-accent/10 transition-colors"
                       onClick={() => handleSort("value")}
                     >
@@ -1066,9 +1057,6 @@ export default function PlayerStats() {
                         </TableCell>
                         <TableCell className="text-right">
                           {formatNumber(player.economyRate, 2)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatNumber(player.points, 1)}
                         </TableCell>
                         <TableCell className="text-right">
                           {formatValueCell(player)}
