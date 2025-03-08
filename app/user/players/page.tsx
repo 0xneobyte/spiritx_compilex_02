@@ -121,6 +121,85 @@ export default function PlayersPage() {
     return colors[hash % colors.length];
   };
 
+  // Calculate batting strike rate on the fly
+  const calculateBattingStrikeRate = (player: Player) => {
+    if (!player.ballsFaced || player.ballsFaced === 0) return 0;
+    return (player.totalRuns / player.ballsFaced) * 100;
+  };
+
+  // Calculate batting average on the fly
+  const calculateBattingAverage = (player: Player) => {
+    if (!player.inningsPlayed || player.inningsPlayed === 0) return 0;
+    return player.totalRuns / player.inningsPlayed;
+  };
+
+  // Calculate bowling strike rate on the fly
+  const calculateBowlingStrikeRate = (player: Player) => {
+    if (!player.wickets || player.wickets === 0) return 0;
+    const ballsBowled = Math.floor(player.oversBowled * 6);
+    return ballsBowled > 0 ? ballsBowled / player.wickets : 0;
+  };
+
+  // Calculate economy rate on the fly
+  const calculateEconomyRate = (player: Player) => {
+    if (!player.oversBowled || player.oversBowled === 0) return 0;
+    return player.runsConceded / player.oversBowled;
+  };
+
+  // Calculate player points on the fly
+  const calculatePlayerPoints = (player: Player) => {
+    let points = 0;
+
+    // Get batting strike rate
+    const battingStrikeRate =
+      player.battingStrikeRate > 0
+        ? player.battingStrikeRate
+        : calculateBattingStrikeRate(player);
+
+    // Get batting average
+    const battingAverage =
+      player.battingAverage > 0
+        ? player.battingAverage
+        : calculateBattingAverage(player);
+
+    // Get bowling strike rate
+    const bowlingStrikeRate =
+      player.bowlingStrikeRate > 0
+        ? player.bowlingStrikeRate
+        : calculateBowlingStrikeRate(player);
+
+    // Get economy rate
+    const economyRate =
+      player.economyRate > 0
+        ? player.economyRate
+        : calculateEconomyRate(player);
+
+    // Calculate points using the same formula as the model
+    if (battingStrikeRate > 0) {
+      points += battingStrikeRate / 5 + battingAverage * 0.8;
+    }
+
+    if (bowlingStrikeRate > 0 && bowlingStrikeRate < 999) {
+      points += 500 / bowlingStrikeRate;
+    }
+
+    if (economyRate > 0) {
+      points += 140 / economyRate;
+    }
+
+    return points;
+  };
+
+  // Calculate player value on the fly
+  const calculatePlayerValue = (player: Player) => {
+    if (player.value > 0) return player.value;
+
+    const points = calculatePlayerPoints(player);
+
+    // Calculate value using the same formula as the model
+    return Math.round(((9 * points + 100) * 1000) / 50000) * 50000;
+  };
+
   if (error) {
     return (
       <div className="min-h-screen p-8 flex items-center justify-center">
@@ -215,7 +294,12 @@ export default function PlayersPage() {
                   </CardHeader>
                   <CardContent className="pt-2">
                     <div className="text-sm text-gray-800 font-medium mt-1">
-                      Value: {formatCurrency(player.value)}
+                      Value:{" "}
+                      {formatCurrency(
+                        player.value > 0
+                          ? player.value
+                          : calculatePlayerValue(player)
+                      )}
                     </div>
                   </CardContent>
                   <CardFooter className="pt-0">
@@ -300,9 +384,13 @@ export default function PlayersPage() {
                                     Batting Strike Rate:
                                   </span>
                                   <p className="font-medium">
-                                    {selectedPlayer.battingStrikeRate.toFixed(
-                                      2
-                                    )}
+                                    {selectedPlayer.battingStrikeRate > 0
+                                      ? selectedPlayer.battingStrikeRate.toFixed(
+                                          2
+                                        )
+                                      : calculateBattingStrikeRate(
+                                          selectedPlayer
+                                        ).toFixed(2)}
                                   </p>
                                 </div>
                                 <div>
@@ -310,7 +398,11 @@ export default function PlayersPage() {
                                     Batting Average:
                                   </span>
                                   <p className="font-medium">
-                                    {selectedPlayer.battingAverage.toFixed(2)}
+                                    {selectedPlayer.battingAverage > 0
+                                      ? selectedPlayer.battingAverage.toFixed(2)
+                                      : calculateBattingAverage(
+                                          selectedPlayer
+                                        ).toFixed(2)}
                                   </p>
                                 </div>
                               </div>
@@ -354,7 +446,13 @@ export default function PlayersPage() {
                                         Economy Rate:
                                       </span>
                                       <p className="font-medium">
-                                        {selectedPlayer.economyRate.toFixed(2)}
+                                        {selectedPlayer.economyRate > 0
+                                          ? selectedPlayer.economyRate.toFixed(
+                                              2
+                                            )
+                                          : calculateEconomyRate(
+                                              selectedPlayer
+                                            ).toFixed(2)}
                                       </p>
                                     </div>
                                     <div>
@@ -362,9 +460,13 @@ export default function PlayersPage() {
                                         Bowling Strike Rate:
                                       </span>
                                       <p className="font-medium">
-                                        {selectedPlayer.bowlingStrikeRate.toFixed(
-                                          2
-                                        )}
+                                        {selectedPlayer.bowlingStrikeRate > 0
+                                          ? selectedPlayer.bowlingStrikeRate.toFixed(
+                                              2
+                                            )
+                                          : calculateBowlingStrikeRate(
+                                              selectedPlayer
+                                            ).toFixed(2)}
                                       </p>
                                     </div>
                                   </div>

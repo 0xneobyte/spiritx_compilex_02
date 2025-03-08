@@ -13,16 +13,9 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { formatCurrency } from "@/app/lib/utils";
 
@@ -49,10 +42,10 @@ export default function TeamPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [userTeam, setUserTeam] = useState<Player[]>([]);
+  const [allPlayers, setAllPlayers] = useState<Player[]>([]);
   const [budget, setBudget] = useState(0);
   const [teamPoints, setTeamPoints] = useState<number | null>(null);
-  const [allPlayers, setAllPlayers] = useState<Player[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
   useEffect(() => {
     const fetchUserTeam = async () => {
@@ -79,7 +72,7 @@ export default function TeamPage() {
       try {
         setLoading(true);
         const categoryParam =
-          selectedCategory !== "all" ? `?category=${selectedCategory}` : "";
+          selectedCategory !== "All" ? `?category=${selectedCategory}` : "";
         const response = await fetch(`/api/players${categoryParam}`);
 
         if (!response.ok) {
@@ -169,13 +162,13 @@ export default function TeamPage() {
   const getCategoryColor = (category: string) => {
     switch (category) {
       case "Batsman":
-        return "bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300";
+        return "bg-blue-50 text-blue-700 border-2 border-blue-400 hover:border-blue-500 hover:bg-blue-100 transition-colors";
       case "Bowler":
-        return "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-300";
+        return "bg-green-50 text-green-700 border-2 border-green-400 hover:border-green-500 hover:bg-green-100 transition-colors";
       case "All-Rounder":
-        return "bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900 dark:text-purple-300";
+        return "bg-purple-50 text-purple-700 border-2 border-purple-400 hover:border-purple-500 hover:bg-purple-100 transition-colors";
       default:
-        return "bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300";
+        return "bg-gray-50 text-gray-700 border-2 border-gray-400 hover:border-gray-500 hover:bg-gray-100 transition-colors";
     }
   };
 
@@ -208,6 +201,85 @@ export default function TeamPage() {
     return userTeam.some((player) => player._id === playerId);
   };
 
+  // Calculate batting strike rate on the fly
+  const calculateBattingStrikeRate = (player: Player) => {
+    if (!player.ballsFaced || player.ballsFaced === 0) return 0;
+    return (player.totalRuns / player.ballsFaced) * 100;
+  };
+
+  // Calculate batting average on the fly
+  const calculateBattingAverage = (player: Player) => {
+    if (!player.inningsPlayed || player.inningsPlayed === 0) return 0;
+    return player.totalRuns / player.inningsPlayed;
+  };
+
+  // Calculate bowling strike rate on the fly
+  const calculateBowlingStrikeRate = (player: Player) => {
+    if (!player.wickets || player.wickets === 0) return 0;
+    const ballsBowled = Math.floor(player.oversBowled * 6);
+    return ballsBowled > 0 ? ballsBowled / player.wickets : 0;
+  };
+
+  // Calculate economy rate on the fly
+  const calculateEconomyRate = (player: Player) => {
+    if (!player.oversBowled || player.oversBowled === 0) return 0;
+    return player.runsConceded / player.oversBowled;
+  };
+
+  // Calculate player points on the fly
+  const calculatePlayerPoints = (player: Player) => {
+    let points = 0;
+
+    // Get batting strike rate
+    const battingStrikeRate =
+      player.battingStrikeRate > 0
+        ? player.battingStrikeRate
+        : calculateBattingStrikeRate(player);
+
+    // Get batting average
+    const battingAverage =
+      player.battingAverage > 0
+        ? player.battingAverage
+        : calculateBattingAverage(player);
+
+    // Get bowling strike rate
+    const bowlingStrikeRate =
+      player.bowlingStrikeRate > 0
+        ? player.bowlingStrikeRate
+        : calculateBowlingStrikeRate(player);
+
+    // Get economy rate
+    const economyRate =
+      player.economyRate > 0
+        ? player.economyRate
+        : calculateEconomyRate(player);
+
+    // Calculate points using the same formula as the model
+    if (battingStrikeRate > 0) {
+      points += battingStrikeRate / 5 + battingAverage * 0.8;
+    }
+
+    if (bowlingStrikeRate > 0 && bowlingStrikeRate < 999) {
+      points += 500 / bowlingStrikeRate;
+    }
+
+    if (economyRate > 0) {
+      points += 140 / economyRate;
+    }
+
+    return points;
+  };
+
+  // Calculate player value on the fly
+  const getPlayerValue = (player: Player) => {
+    if (player.value > 0) return player.value;
+
+    const points = calculatePlayerPoints(player);
+
+    // Calculate value using the same formula as the model
+    return Math.round(((9 * points + 100) * 1000) / 50000) * 50000;
+  };
+
   if (error) {
     return (
       <div className="min-h-screen p-8 flex items-center justify-center">
@@ -235,81 +307,69 @@ export default function TeamPage() {
     <div className="container mx-auto p-6">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Your Team</h1>
+          <h1 className="text-3xl font-bold text-gray-800">Select Your Team</h1>
           <p className="text-gray-600">{userTeam.length}/11 players selected</p>
         </div>
 
         <div className="mt-4 md:mt-0">
-          <Card className="bg-white shadow-sm border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-700">Budget:</span>
-                <span className="text-xl font-bold text-indigo-600">
-                  {formatCurrency(budget)}
-                </span>
-              </div>
-
-              {teamPoints !== null && (
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
-                  <span className="text-gray-700">Team Points:</span>
-                  <span className="text-xl font-bold text-green-600">
-                    {teamPoints.toFixed(2)}
-                  </span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <div className="rounded-lg border p-4 bg-white shadow-sm">
+            <p className="text-gray-700 font-medium">
+              Budget:{" "}
+              <span className="font-bold text-indigo-600">
+                {formatCurrency(budget)}
+              </span>
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Team Members Section */}
-        <div className="lg:col-span-1">
-          <Card>
-            <CardHeader>
+        <div className="md:col-span-1">
+          <Card className="bg-white border shadow-sm">
+            <CardHeader className="pb-3">
               <CardTitle>Team Members</CardTitle>
               <CardDescription>Your selected players</CardDescription>
             </CardHeader>
             <CardContent>
               {userTeam.length === 0 ? (
-                <div className="text-center py-6 text-gray-500">
-                  <p>No players selected yet.</p>
-                  <p className="text-sm mt-2">
-                    Add players from the selection panel.
-                  </p>
-                </div>
+                <p className="text-gray-500 text-center py-12">
+                  No players in your team yet
+                </p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {userTeam.map((player) => (
                     <div
                       key={player._id}
-                      className="flex items-center justify-between p-2 rounded-lg bg-gray-50 hover:bg-gray-100"
+                      className="flex items-center justify-between bg-gray-50 rounded-lg p-3"
                     >
-                      <div className="flex items-center space-x-3">
-                        <Avatar
-                          className={`h-8 w-8 ${getAvatarColor(player.name)}`}
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${getAvatarColor(
+                            player.name
+                          )}`}
                         >
-                          <AvatarFallback>
-                            {getPlayerInitials(player.name)}
-                          </AvatarFallback>
-                        </Avatar>
+                          {getPlayerInitials(player.name)}
+                        </div>
                         <div>
-                          <p className="text-sm font-medium">{player.name}</p>
+                          <h3 className="font-medium">{player.name}</h3>
                           <Badge
-                            className={`text-xs ${getCategoryColor(
+                            className={`${getCategoryColor(
                               player.category
-                            )}`}
+                            )} text-xs`}
                           >
                             {player.category}
                           </Badge>
                         </div>
                       </div>
-                      <button
-                        className="text-red-500 hover:text-red-700 text-sm font-medium"
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
                         onClick={() => removePlayerFromTeam(player._id)}
                       >
                         Remove
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -319,135 +379,117 @@ export default function TeamPage() {
         </div>
 
         {/* Player Selection Section */}
-        <div className="lg:col-span-3">
-          <Card>
-            <CardHeader>
+        <div className="md:col-span-2">
+          <Card className="bg-white border shadow-sm">
+            <CardHeader className="pb-3">
               <CardTitle>Select Players</CardTitle>
               <CardDescription>
                 Add players to complete your team
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs
-                defaultValue="all"
-                className="w-full"
-                onValueChange={setSelectedCategory}
-              >
-                <TabsList className="grid grid-cols-4 mb-6">
-                  <TabsTrigger value="all">All</TabsTrigger>
-                  <TabsTrigger value="Batsman">Batsmen</TabsTrigger>
-                  <TabsTrigger value="Bowler">Bowlers</TabsTrigger>
-                  <TabsTrigger value="All-Rounder">All-Rounders</TabsTrigger>
-                </TabsList>
+              <div className="mb-6">
+                <Tabs
+                  defaultValue="All"
+                  onValueChange={setSelectedCategory}
+                  className="w-full"
+                >
+                  <TabsList className="grid grid-cols-4">
+                    <TabsTrigger value="All">All</TabsTrigger>
+                    <TabsTrigger value="Batsman">Batsmen</TabsTrigger>
+                    <TabsTrigger value="Bowler">Bowlers</TabsTrigger>
+                    <TabsTrigger value="All-Rounder">All-Rounders</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
 
-                <TabsContent value={selectedCategory} className="mt-2">
-                  {loading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {[...Array(6)].map((_, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center space-x-3 p-3 rounded-lg border"
-                        >
-                          <Skeleton className="h-10 w-10 rounded-full" />
-                          <div className="space-y-2 flex-1">
-                            <Skeleton className="h-4 w-28" />
-                            <Skeleton className="h-3 w-24" />
-                          </div>
-                          <Skeleton className="h-8 w-16" />
+              {loading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {[...Array(6)].map((_, index) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <Skeleton className="h-10 w-10 rounded-full" />
+                        <div>
+                          <Skeleton className="h-4 w-28 mb-1" />
+                          <Skeleton className="h-3 w-20" />
                         </div>
-                      ))}
+                      </div>
+                      <Skeleton className="h-6 w-full mt-2" />
+                      <div className="flex justify-between mt-3">
+                        <Skeleton className="h-8 w-24" />
+                        <Skeleton className="h-8 w-16" />
+                      </div>
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {allPlayers.map((player) => {
-                        const playerInTeam = isPlayerInTeam(player._id);
-                        const canAfford = budget >= player.value;
-                        const teamFull = userTeam.length >= 11;
-
-                        return (
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {allPlayers.map((player) => (
+                    <div
+                      key={player._id}
+                      className="border rounded-lg overflow-hidden"
+                    >
+                      <div className="p-4">
+                        <div className="flex items-start gap-3">
                           <div
-                            key={player._id}
-                            className={`flex items-center justify-between p-3 rounded-lg border 
-                              ${
-                                playerInTeam
-                                  ? "bg-indigo-50 border-indigo-200"
-                                  : "bg-white hover:bg-gray-50"
-                              }`}
+                            className={`w-10 h-10 rounded-full flex items-center justify-center text-white flex-shrink-0 ${getAvatarColor(
+                              player.name
+                            )}`}
                           >
-                            <div className="flex items-center space-x-3">
-                              <Avatar
-                                className={`h-10 w-10 ${getAvatarColor(
-                                  player.name
-                                )}`}
-                              >
-                                <AvatarFallback>
-                                  {getPlayerInitials(player.name)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium">{player.name}</p>
-                                <div className="flex items-center space-x-2">
-                                  <Badge
-                                    className={`text-xs ${getCategoryColor(
-                                      player.category
-                                    )}`}
-                                  >
-                                    {player.category}
-                                  </Badge>
-                                  <span className="text-sm text-gray-500">
-                                    {formatCurrency(player.value)}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div>
-                              {playerInTeam ? (
-                                <button
-                                  className="px-3 py-1 bg-red-100 text-red-700 rounded-md text-sm hover:bg-red-200"
-                                  onClick={() =>
-                                    removePlayerFromTeam(player._id)
-                                  }
-                                >
-                                  Remove
-                                </button>
-                              ) : (
-                                <button
-                                  className={`px-3 py-1 rounded-md text-sm ${
-                                    canAfford && !teamFull
-                                      ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                  }`}
-                                  onClick={() => {
-                                    if (canAfford && !teamFull) {
-                                      addPlayerToTeam(player._id);
-                                    } else if (teamFull) {
-                                      toast.error(
-                                        "Your team is already full (11 players maximum)"
-                                      );
-                                    } else {
-                                      toast.error(
-                                        "Insufficient budget to add this player"
-                                      );
-                                    }
-                                  }}
-                                  disabled={!canAfford || teamFull}
-                                >
-                                  {!canAfford
-                                    ? "Can't Afford"
-                                    : teamFull
-                                    ? "Team Full"
-                                    : "Add"}
-                                </button>
-                              )}
-                            </div>
+                            {getPlayerInitials(player.name)}
                           </div>
-                        );
-                      })}
+                          <div>
+                            <h3 className="font-medium">{player.name}</h3>
+                            <Badge
+                              className={`${getCategoryColor(
+                                player.category
+                              )} text-xs mt-1`}
+                            >
+                              {player.category}
+                            </Badge>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {player.university}
+                            </p>
+                            <p className="text-sm font-medium text-gray-700 mt-1">
+                              {formatCurrency(getPlayerValue(player))}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex justify-end mt-3">
+                          <Button
+                            size="sm"
+                            variant={
+                              isPlayerInTeam(player._id)
+                                ? "destructive"
+                                : "default"
+                            }
+                            onClick={() =>
+                              isPlayerInTeam(player._id)
+                                ? removePlayerFromTeam(player._id)
+                                : addPlayerToTeam(player._id)
+                            }
+                            disabled={
+                              !isPlayerInTeam(player._id) &&
+                              (userTeam.length >= 11 ||
+                                budget < getPlayerValue(player))
+                            }
+                          >
+                            {isPlayerInTeam(player._id) ? "Remove" : "Add"}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </TabsContent>
-              </Tabs>
+                  ))}
+                </div>
+              )}
+
+              {!loading && allPlayers.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-lg">
+                    No players found in this category
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

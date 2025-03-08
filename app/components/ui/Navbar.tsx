@@ -19,7 +19,7 @@ const Navbar = React.forwardRef<HTMLDivElement, NavbarProps>(
 
     const userNavLinks = [
       { name: "Players", href: "/user/players" },
-      { name: "Team", href: "/user/team" },
+      { name: "Select Your Team", href: "/user/team" },
       { name: "Budget", href: "/user/budget" },
       { name: "Leaderboard", href: "/user/leaderboard" },
       { name: "Spiriter", href: "/user/spiriter" },

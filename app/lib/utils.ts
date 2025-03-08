@@ -8,11 +8,13 @@ export function cn(...inputs: ClassValue[]) {
 
 // Format currency (Rs.)
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
+  // Format with commas for thousands in groups of 3 (e.g., 1,000,000)
+  const formattedAmount = new Intl.NumberFormat("en-US", {
     maximumFractionDigits: 0,
   }).format(amount);
+
+  // Return with "Rs" prefix
+  return `Rs ${formattedAmount}`;
 }
 
 // Calculate team points based on array of player points
