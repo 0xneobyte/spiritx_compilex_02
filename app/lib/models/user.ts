@@ -9,12 +9,17 @@ export interface IUser extends Document {
   comparePassword: (candidatePassword: string) => Promise<boolean>;
 }
 
-const UserSchema = new Schema<IUser>({
-  username: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  budget: { type: Number, required: true, default: 9000000 },
-  team: [{ type: Schema.Types.ObjectId, ref: "Player" }],
-});
+const UserSchema = new Schema<IUser>(
+  {
+    username: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    budget: { type: Number, required: true, default: 9000000 },
+    team: [{ type: Schema.Types.ObjectId, ref: "Player" }],
+  },
+  {
+    timestamps: true,
+  }
+);
 
 // Hash password before saving
 UserSchema.pre("save", async function (next) {
@@ -36,6 +41,11 @@ UserSchema.methods.comparePassword = async function (
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-const User = mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+// Delete the model if it exists to avoid overwrite warnings
+if (mongoose.models.User) {
+  mongoose.deleteModel("User");
+}
+
+const User = mongoose.model<IUser>("User", UserSchema);
 
 export default User;

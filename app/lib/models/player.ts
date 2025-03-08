@@ -19,28 +19,33 @@ export interface IPlayer extends Document {
   isFromOriginalDataset: boolean;
 }
 
-const PlayerSchema = new Schema<IPlayer>({
-  name: { type: String, required: true },
-  university: { type: String, required: true },
-  category: {
-    type: String,
-    required: true,
-    enum: ["Batsman", "Bowler", "All-Rounder"],
+const PlayerSchema = new Schema<IPlayer>(
+  {
+    name: { type: String, required: true },
+    university: { type: String, required: true },
+    category: {
+      type: String,
+      required: true,
+      enum: ["Batsman", "Bowler", "All-Rounder"],
+    },
+    totalRuns: { type: Number, required: true, default: 0 },
+    ballsFaced: { type: Number, required: true, default: 0 },
+    inningsPlayed: { type: Number, required: true, default: 0 },
+    wickets: { type: Number, required: true, default: 0 },
+    oversBowled: { type: Number, required: true, default: 0 },
+    runsConceded: { type: Number, required: true, default: 0 },
+    battingStrikeRate: { type: Number, default: 0 },
+    battingAverage: { type: Number, default: 0 },
+    bowlingStrikeRate: { type: Number, default: 0 },
+    economyRate: { type: Number, default: 0 },
+    points: { type: Number, default: 0 },
+    value: { type: Number, default: 0 },
+    isFromOriginalDataset: { type: Boolean, default: true },
   },
-  totalRuns: { type: Number, required: true, default: 0 },
-  ballsFaced: { type: Number, required: true, default: 0 },
-  inningsPlayed: { type: Number, required: true, default: 0 },
-  wickets: { type: Number, required: true, default: 0 },
-  oversBowled: { type: Number, required: true, default: 0 },
-  runsConceded: { type: Number, required: true, default: 0 },
-  battingStrikeRate: { type: Number, default: 0 },
-  battingAverage: { type: Number, default: 0 },
-  bowlingStrikeRate: { type: Number, default: 0 },
-  economyRate: { type: Number, default: 0 },
-  points: { type: Number, default: 0 },
-  value: { type: Number, default: 0 },
-  isFromOriginalDataset: { type: Boolean, default: true },
-});
+  {
+    timestamps: true,
+  }
+);
 
 // Calculate derived stats when saving a player
 PlayerSchema.pre("save", function (next) {
@@ -90,7 +95,11 @@ PlayerSchema.pre("save", function (next) {
   next();
 });
 
-const Player =
-  mongoose.models.Player || mongoose.model<IPlayer>("Player", PlayerSchema);
+// Delete the model if it exists to avoid overwrite warnings
+if (mongoose.models.Player) {
+  mongoose.deleteModel("Player");
+}
+
+const Player = mongoose.model<IPlayer>("Player", PlayerSchema);
 
 export default Player;

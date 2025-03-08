@@ -27,9 +27,10 @@ export const verifyToken = (token: string): JwtPayload | null => {
   }
 };
 
-// Set token in cookies
-export const setTokenCookie = (token: string) => {
-  cookies().set({
+// Set token in cookies - now async
+export const setTokenCookie = async (token: string) => {
+  const cookieStore = cookies();
+  await cookieStore.set({
     name: TOKEN_NAME,
     value: token,
     httpOnly: true,
@@ -45,8 +46,9 @@ export const getTokenCookie = (): string | undefined => {
 };
 
 // Remove token cookie
-export const removeTokenCookie = () => {
-  cookies().delete(TOKEN_NAME);
+export const removeTokenCookie = async () => {
+  const cookieStore = cookies();
+  await cookieStore.delete(TOKEN_NAME);
 };
 
 // Get current user from token
