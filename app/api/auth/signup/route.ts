@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Set token in cookie
-    setTokenCookie(token);
+    await setTokenCookie(token);
 
     return NextResponse.json(
       {
