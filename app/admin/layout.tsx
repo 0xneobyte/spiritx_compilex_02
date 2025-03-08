@@ -13,11 +13,13 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const [username, setUsername] = useState<string>("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Check if user is an admin
     const checkAdmin = async () => {
       try {
+        setLoading(true);
         const response = await fetch("/api/user/me");
         if (!response.ok) {
           toast.error("Authentication required");
@@ -38,6 +40,8 @@ export default function AdminLayout({
       } catch (error) {
         console.error("Admin auth check failed:", error);
         router.push("/auth/login");
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -65,7 +69,20 @@ export default function AdminLayout({
         username={username}
         onLogout={handleLogout}
       />
-      <main className="flex-grow">{children}</main>
+      <main className="flex-grow">
+        {loading ? (
+          <div className="flex items-center justify-center h-screen">
+            <div className="flex flex-col items-center gap-2">
+              <div className="size-8 text-primary animate-spin border-2 border-primary border-t-transparent rounded-full"></div>
+              <p className="text-sm text-muted-foreground">
+                Verifying admin access...
+              </p>
+            </div>
+          </div>
+        ) : (
+          children
+        )}
+      </main>
       <ToastProvider />
     </div>
   );

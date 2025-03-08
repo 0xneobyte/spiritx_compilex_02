@@ -11,6 +11,19 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 interface TournamentStats {
   totalRuns: number;
@@ -67,6 +80,13 @@ export default function TournamentSummary() {
         }
 
         const data = await response.json();
+
+        // Debug logs
+        console.log("Raw data from API:", data);
+        console.log("Batting stats from API:", {
+          strikerate: data.averages?.battingStrikeRate,
+          average: data.averages?.battingAverage,
+        });
 
         // Ensure all data has values to prevent undefined errors
         const cleanedData = {
@@ -261,59 +281,94 @@ export default function TournamentSummary() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Tournament Averages</CardTitle>
+                <CardTitle>Tournament Performance Metrics</CardTitle>
                 <CardDescription>
-                  Average statistics across all players
+                  Key batting and bowling statistics from the tournament
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-600">
-                      Average Batting Strike Rate
-                    </h3>
-                    <div className="text-2xl font-bold">
-                      {formatNumber(stats.averages.battingStrikeRate, 2)}
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-600">
-                      Average Batting Average
-                    </h3>
-                    <div className="text-2xl font-bold">
-                      {formatNumber(stats.averages.battingAverage, 2)}
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-600">
-                      Players Per Category
-                    </h3>
-                    <div className="mt-2 grid grid-cols-3 gap-2">
-                      <div className="bg-blue-50 p-3 rounded-md text-center">
-                        <span className="block text-lg font-bold text-blue-700">
-                          {stats.categoryCounts.Batsman}
-                        </span>
-                        <span className="text-xs text-blue-600">Batsmen</span>
+              <CardContent className="h-[300px]">
+                <div className="h-full flex flex-col justify-center">
+                  <div className="space-y-8">
+                    <div>
+                      <h3 className="text-lg font-semibold text-blue-600 mb-2">
+                        Average Batting Strike Rate
+                      </h3>
+                      <div className="bg-blue-50 p-4 rounded-md">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">
+                            Strike Rate
+                          </span>
+                          <span className="text-3xl font-bold text-blue-700">
+                            {formatNumber(stats.averages.battingStrikeRate, 2)}
+                          </span>
+                        </div>
+                        <div className="mt-4 w-full bg-gray-200 rounded-full h-2.5">
+                          <div
+                            className="bg-blue-600 h-2.5 rounded-full"
+                            style={{
+                              width: `${Math.min(
+                                100,
+                                (stats.averages.battingStrikeRate / 150) * 100
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                        <div className="mt-1 text-xs text-gray-500">
+                          <span className="float-right">(Benchmark: 100)</span>
+                          <span>Formula: (Total Runs / Balls Faced) × 100</span>
+                        </div>
                       </div>
-                      <div className="bg-green-50 p-3 rounded-md text-center">
-                        <span className="block text-lg font-bold text-green-700">
-                          {stats.categoryCounts.Bowler}
-                        </span>
-                        <span className="text-xs text-green-600">Bowlers</span>
-                      </div>
-                      <div className="bg-purple-50 p-3 rounded-md text-center">
-                        <span className="block text-lg font-bold text-purple-700">
-                          {stats.categoryCounts["All-Rounder"]}
-                        </span>
-                        <span className="text-xs text-purple-600">
-                          All-Rounders
-                        </span>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-semibold text-emerald-600 mb-2">
+                        Average Bowling Strike Rate
+                      </h3>
+                      <div className="bg-emerald-50 p-4 rounded-md">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">
+                            Bowling Strike Rate
+                          </span>
+                          <span className="text-3xl font-bold text-emerald-700">
+                            {stats.totalWickets > 0
+                              ? formatNumber(
+                                  (stats.totalWickets /
+                                    stats.categoryCounts.Bowler) *
+                                    3,
+                                  1
+                                )
+                              : "0.0"}
+                          </span>
+                        </div>
+                        <div className="mt-4 w-full bg-gray-200 rounded-full h-2.5">
+                          <div
+                            className="bg-emerald-600 h-2.5 rounded-full"
+                            style={{
+                              width: `${Math.min(
+                                100,
+                                stats.totalWickets > 0
+                                  ? 100 -
+                                      Math.min(
+                                        70,
+                                        (((stats.totalWickets /
+                                          stats.categoryCounts.Bowler) *
+                                          3) /
+                                          30) *
+                                          100
+                                      )
+                                  : 0
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                        <div className="mt-1 text-xs text-gray-500">
+                          <span className="float-right">
+                            (Estimated based on total wickets)
+                          </span>
+                          <span>
+                            Formula: (Total Wickets / Number of Bowlers) × 3
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>

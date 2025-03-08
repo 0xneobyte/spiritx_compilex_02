@@ -42,6 +42,13 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Player {
   _id: string;
@@ -87,6 +94,9 @@ export default function PlayerStats() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [displaySortField, setDisplaySortField] = useState("name");
+  const [selectedDetailPlayer, setSelectedDetailPlayer] =
+    useState<Player | null>(null);
+  const [showPlayerDetail, setShowPlayerDetail] = useState(false);
 
   // Calculate cricket statistics
   const calculateStats = (player: any) => {
@@ -508,6 +518,11 @@ export default function PlayerStats() {
 
   // Use this function to get the filtered and sorted players
   const filteredAndSortedPlayers = getFilteredAndSortedPlayers();
+
+  const openPlayerDetail = (player: Player) => {
+    setSelectedDetailPlayer(player);
+    setShowPlayerDetail(true);
+  };
 
   return (
     <div className="container mx-auto p-6">
@@ -1005,7 +1020,11 @@ export default function PlayerStats() {
                 <TableBody>
                   {filteredAndSortedPlayers.length > 0 ? (
                     filteredAndSortedPlayers.map((player) => (
-                      <TableRow key={player._id}>
+                      <TableRow
+                        key={player._id}
+                        onClick={() => openPlayerDetail(player)}
+                        className="cursor-pointer hover:bg-accent/20 transition-colors"
+                      >
                         <TableCell className="font-medium">
                           {player.name}
                         </TableCell>
@@ -1072,6 +1091,171 @@ export default function PlayerStats() {
           </Card>
         </div>
       )}
+
+      {/* Player Detail Dialog */}
+      <Dialog open={showPlayerDetail} onOpenChange={setShowPlayerDetail}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold flex items-center">
+              {selectedDetailPlayer?.name}
+              <Badge
+                className={`ml-3 px-3 py-1 font-medium rounded-md shadow-sm ${getCategoryStyles(
+                  selectedDetailPlayer?.category || ""
+                )}`}
+              >
+                {selectedDetailPlayer?.category}
+              </Badge>
+            </DialogTitle>
+            <DialogDescription>
+              {selectedDetailPlayer?.university}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedDetailPlayer && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Batting Statistics</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">
+                      Total Runs
+                    </span>
+                    <span className="font-semibold">
+                      {selectedDetailPlayer.totalRuns}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">
+                      Innings Played
+                    </span>
+                    <span className="font-semibold">
+                      {selectedDetailPlayer.inningsPlayed}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">
+                      Balls Faced
+                    </span>
+                    <span className="font-semibold">
+                      {selectedDetailPlayer.ballsFaced}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">
+                      Batting Strike Rate
+                    </span>
+                    <span className="font-semibold">
+                      {formatNumber(selectedDetailPlayer.battingStrikeRate, 2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">
+                      Batting Average
+                    </span>
+                    <span className="font-semibold">
+                      {formatNumber(selectedDetailPlayer.battingAverage, 2)}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Bowling Statistics</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">
+                      Wickets
+                    </span>
+                    <span className="font-semibold">
+                      {selectedDetailPlayer.wickets}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">
+                      Overs Bowled
+                    </span>
+                    <span className="font-semibold">
+                      {formatNumber(selectedDetailPlayer.oversBowled, 1)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">
+                      Runs Conceded
+                    </span>
+                    <span className="font-semibold">
+                      {selectedDetailPlayer.runsConceded}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">
+                      Economy Rate
+                    </span>
+                    <span className="font-semibold">
+                      {formatNumber(selectedDetailPlayer.economyRate, 2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">
+                      Bowling Strike Rate
+                    </span>
+                    <span className="font-semibold">
+                      {selectedDetailPlayer.wickets > 0
+                        ? formatNumber(
+                            selectedDetailPlayer.bowlingStrikeRate,
+                            2
+                          )
+                        : "Undefined"}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Value Metrics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-primary/5 p-6 rounded-lg border border-primary/10">
+                      <div className="text-sm text-muted-foreground mb-2">
+                        Player Points
+                      </div>
+                      <div className="text-3xl font-bold text-primary">
+                        {formatNumber(selectedDetailPlayer.points, 1)}
+                      </div>
+                      <div className="mt-3 text-xs text-muted-foreground">
+                        Points are calculated based on performance metrics:{" "}
+                        <br />
+                        • Batting: (Strike Rate / 5) + (Average × 0.8) <br />•
+                        Bowling: (500 / Strike Rate) + (140 / Economy Rate)
+                      </div>
+                    </div>
+
+                    <div className="bg-primary/5 p-6 rounded-lg border border-primary/10">
+                      <div className="text-sm text-muted-foreground mb-2">
+                        Player Value
+                      </div>
+                      <div className="text-3xl font-bold text-primary">
+                        $
+                        {formatValueCell(selectedDetailPlayer).replace("$", "")}
+                      </div>
+                      <div className="mt-3 text-xs text-muted-foreground">
+                        Value is calculated using the formula: <br />
+                        (9 × Points + 100) × 1000 <br />
+                        Rounded to nearest 50,000
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

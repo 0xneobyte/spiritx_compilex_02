@@ -21,7 +21,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,6 +36,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { InfoIcon } from "lucide-react";
 
 interface Player {
   _id: string;
@@ -86,6 +86,7 @@ export default function PlayersManagement() {
     value: 0,
     price: 100000,
   });
+  const [isPointsInfoOpen, setIsPointsInfoOpen] = useState(false);
 
   // Format number safely
   const formatNumber = (value: number | undefined, decimals = 0) => {
@@ -243,9 +244,50 @@ export default function PlayersManagement() {
     setFilteredPlayers(filtered);
   }, [players, currentCategory, searchQuery]);
 
+  // Form validation function
+  const validatePlayerForm = (player: Partial<Player>) => {
+    const errors: Record<string, string> = {};
+
+    if (!player.name || player.name.trim() === "") {
+      errors.name = "Name is required";
+    }
+
+    if (!player.university || player.university.trim() === "") {
+      errors.university = "University is required";
+    }
+
+    if (!player.category) {
+      errors.category = "Category is required";
+    }
+
+    if (player.inningsPlayed === undefined || player.inningsPlayed < 0) {
+      errors.inningsPlayed = "Valid innings played value is required";
+    }
+
+    if (player.totalRuns === undefined || player.totalRuns < 0) {
+      errors.totalRuns = "Valid total runs value is required";
+    }
+
+    if (player.ballsFaced === undefined || player.ballsFaced < 0) {
+      errors.ballsFaced = "Valid balls faced value is required";
+    }
+
+    // Return null if no errors, otherwise return the errors object
+    return Object.keys(errors).length > 0 ? errors : null;
+  };
+
   // Handle adding a new player
   const handleAddPlayer = async () => {
     try {
+      // Validate form data
+      const errors = validatePlayerForm(newPlayer);
+      if (errors) {
+        // Display first error
+        const firstError = Object.values(errors)[0];
+        toast.error(firstError);
+        return;
+      }
+
       // Calculate derived statistics
       const playerWithStats = calculateStats(newPlayer);
 
@@ -297,15 +339,30 @@ export default function PlayersManagement() {
     if (!selectedPlayer) return;
 
     try {
+      // Validate form data
+      const errors = validatePlayerForm(selectedPlayer);
+      if (errors) {
+        // Display first error
+        const firstError = Object.values(errors)[0];
+        toast.error(firstError);
+        return;
+      }
+
       // Calculate derived statistics
       const playerWithStats = calculateStats(selectedPlayer);
+
+      // Preserve the isFromOriginalDataset flag
+      const playerToUpdate = {
+        ...playerWithStats,
+        isFromOriginalDataset: selectedPlayer.isFromOriginalDataset,
+      };
 
       const response = await fetch(`/api/admin/players/${selectedPlayer._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(playerWithStats),
+        body: JSON.stringify(playerToUpdate),
       });
 
       if (!response.ok) {
@@ -348,18 +405,45 @@ export default function PlayersManagement() {
     }
   };
 
+  // Add this function to handle category styles
+  const getCategoryStyles = (category: string) => {
+    switch (category) {
+      case "Batsman":
+        return "bg-blue-50 text-blue-700 border-2 border-blue-400 hover:border-blue-500 hover:bg-blue-100 transition-colors";
+      case "Bowler":
+        return "bg-green-50 text-green-700 border-2 border-green-400 hover:border-green-500 hover:bg-green-100 transition-colors";
+      case "All-Rounder":
+        return "bg-purple-50 text-purple-700 border-2 border-purple-400 hover:border-purple-500 hover:bg-purple-100 transition-colors";
+      default:
+        return "bg-gray-50 text-gray-700 border-2 border-gray-400 hover:border-gray-500 hover:bg-gray-100 transition-colors";
+    }
+  };
+
   return (
     <div className="container mx-auto p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">
-            Players Management
+            Player Management
           </h1>
-          <p className="text-gray-600">View, add, edit, or delete players</p>
+          <p className="text-gray-600">
+            Add, update, and delete players in the system
+          </p>
         </div>
-        <div className="flex mt-4 md:mt-0 space-x-2">
-          <Button onClick={() => setIsAddDialogOpen(true)}>
-            Add New Player
+        <div className="flex flex-col sm:flex-row gap-3 mt-4 md:mt-0">
+          <Button
+            onClick={() => setIsPointsInfoOpen(true)}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <InfoIcon className="size-4" />
+            <span>Points & Value Info</span>
+          </Button>
+          <Button
+            onClick={() => setIsAddDialogOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <span>Add New Player</span>
           </Button>
           <Link href="/admin/dashboard">
             <Button variant="outline">Back to Dashboard</Button>
@@ -419,92 +503,67 @@ export default function PlayersManagement() {
             filteredPlayers.map((player) => (
               <Card
                 key={player._id}
-                className={
-                  player.isFromOriginalDataset
-                    ? "border-blue-200"
-                    : "border-green-200"
-                }
+                className="overflow-hidden transition-all hover:shadow-md"
               >
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start">
-                    <CardDescription>
-                      {player.university}
-                      {player.isFromOriginalDataset && (
-                        <Badge variant="outline" className="ml-2 bg-blue-50">
-                          Original Dataset
-                        </Badge>
-                      )}
-                    </CardDescription>
-                    <Badge
-                      className={
-                        player.category === "Batsman"
-                          ? "bg-blue-500"
-                          : player.category === "Bowler"
-                          ? "bg-green-500"
-                          : "bg-purple-500"
-                      }
-                    >
+                    <div>
+                      <div className="text-sm text-muted-foreground">
+                        {player.university}
+                      </div>
+                      <CardTitle className="mt-1">{player.name}</CardTitle>
+                    </div>
+                    <Badge className={getCategoryStyles(player.category)}>
                       {player.category}
                     </Badge>
                   </div>
-                  <CardTitle className="text-xl">{player.name}</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-y-2 text-sm">
+                <CardContent className="pb-3">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <span className="font-medium">Innings:</span>{" "}
-                      {player.inningsPlayed || 0}
-                    </div>
-                    <div>
-                      <span className="font-medium">Runs:</span>{" "}
-                      {player.totalRuns || 0}
-                    </div>
-                    <div>
-                      <span className="font-medium">Wickets:</span>{" "}
-                      {player.wickets || 0}
-                    </div>
-                    <div>
-                      <span className="font-medium">Strike Rate:</span>{" "}
-                      {formatNumber(player.battingStrikeRate, 2)}
+                      <div className="text-sm font-medium">
+                        Innings: {player.inningsPlayed}
+                      </div>
+                      <div className="text-sm font-medium">
+                        Wickets: {player.wickets}
+                      </div>
+                      <div className="text-sm font-medium">
+                        Economy: {formatNumber(player.economyRate, 2)}
+                      </div>
+                      <div className="text-sm font-medium">
+                        Runs Conceded: {player.runsConceded}
+                      </div>
                     </div>
                     <div>
-                      <span className="font-medium">Economy:</span>{" "}
-                      {formatNumber(player.economyRate, 2)}
-                    </div>
-                    <div>
-                      <span className="font-medium">Overs:</span>{" "}
-                      {formatNumber(player.oversBowled, 1)}
-                    </div>
-                    <div className="col-span-2">
-                      <span className="font-medium">Runs Conceded:</span>{" "}
-                      {player.runsConceded || 0}
-                    </div>
-                    <div className="col-span-2">
-                      <span className="font-medium">Price:</span> Rs{" "}
-                      {(player.price || 0).toLocaleString()}
+                      <div className="text-sm font-medium">
+                        Runs: {player.totalRuns}
+                      </div>
+                      <div className="text-sm font-medium">
+                        Strike Rate: {formatNumber(player.battingStrikeRate, 2)}
+                      </div>
+                      <div className="text-sm font-medium">
+                        Overs: {formatNumber(player.oversBowled, 1)}
+                      </div>
+                      <div className="text-sm font-medium">
+                        Price: Rs {formatNumber(player.price)}
+                      </div>
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="flex justify-between">
+                <CardFooter className="pt-0 flex justify-end gap-2">
                   <Button
                     variant="outline"
                     onClick={() => {
                       setSelectedPlayer(player);
                       setIsEditDialogOpen(true);
                     }}
-                    disabled={player.isFromOriginalDataset}
                   >
                     Edit
                   </Button>
 
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button
-                        variant="destructive"
-                        disabled={player.isFromOriginalDataset}
-                      >
-                        Delete
-                      </Button>
+                      <Button variant="destructive">Delete</Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
@@ -537,9 +596,115 @@ export default function PlayersManagement() {
         </div>
       )}
 
+      {/* Points and Value Calculation Information Dialog */}
+      <Dialog open={isPointsInfoOpen} onOpenChange={setIsPointsInfoOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Points & Value Calculation</DialogTitle>
+            <DialogDescription>
+              How player points and value are dynamically calculated
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Player Points</h3>
+              <div className="space-y-4">
+                <div className="p-4 bg-primary/5 rounded-md border border-primary/10">
+                  <p className="font-medium">Batting Component</p>
+                  <code className="block mt-2 p-2 bg-background rounded border">
+                    (Batting Strike Rate / 5) + (Batting Average × 0.8)
+                  </code>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    This rewards both scoring efficiency (strike rate) and
+                    consistency (batting average).
+                  </p>
+                </div>
+
+                <div className="p-4 bg-primary/5 rounded-md border border-primary/10">
+                  <p className="font-medium">Bowling Component</p>
+                  <code className="block mt-2 p-2 bg-background rounded border">
+                    (500 / Bowling Strike Rate) + (140 / Economy Rate)
+                  </code>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    This rewards both wicket-taking ability (bowling strike
+                    rate) and run containment (economy rate).
+                  </p>
+                </div>
+
+                <div className="p-4 bg-primary/5 rounded-md border border-primary/10">
+                  <p className="font-medium">Total Points</p>
+                  <code className="block mt-2 p-2 bg-background rounded border">
+                    Batting Component + Bowling Component
+                  </code>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    All-rounders benefit from both components, while specialists
+                    excel in their specific domain.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Player Value</h3>
+              <div className="p-4 bg-primary/5 rounded-md border border-primary/10">
+                <p className="font-medium">Value Calculation</p>
+                <code className="block mt-2 p-2 bg-background rounded border">
+                  (9 × Points + 100) × 1000
+                </code>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  This is then rounded to the nearest 50,000 to create
+                  reasonable price brackets.
+                </p>
+                <div className="mt-3 space-y-2">
+                  <p className="text-sm">Example calculations:</p>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                    <li>
+                      10 points → (9 × 10 + 100) × 1000 = 190,000 → 200,000
+                    </li>
+                    <li>
+                      20 points → (9 × 20 + 100) × 1000 = 280,000 → 300,000
+                    </li>
+                    <li>
+                      50 points → (9 × 50 + 100) × 1000 = 550,000 → 550,000
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-amber-50 rounded-md border border-amber-200">
+              <p className="font-medium text-amber-800">Important Notes</p>
+              <ul className="mt-2 list-disc list-inside space-y-1 text-sm text-amber-700">
+                <li>
+                  All calculations are performed automatically when you add or
+                  update player statistics.
+                </li>
+                <li>
+                  Players with 0 wickets will have "Undefined" bowling strike
+                  rate but can still earn points from economy rate.
+                </li>
+                <li>
+                  The minimum value for any player is 100,000, regardless of
+                  performance statistics.
+                </li>
+                <li>
+                  Original dataset players cannot have their statistics
+                  modified.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button onClick={() => setIsPointsInfoOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Add Player Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Player</DialogTitle>
             <DialogDescription>
@@ -548,151 +713,196 @@ export default function PlayersManagement() {
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
             <div className="col-span-2">
-              <Label htmlFor="name">Player Name</Label>
-              <Input
-                id="name"
-                value={newPlayer.name}
-                onChange={(e) =>
-                  setNewPlayer({ ...newPlayer, name: e.target.value })
-                }
-              />
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-sm font-medium">
+                  Player Name *
+                </Label>
+                <Input
+                  id="name"
+                  value={newPlayer.name}
+                  onChange={(e) =>
+                    setNewPlayer({ ...newPlayer, name: e.target.value })
+                  }
+                  placeholder="Enter player name"
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Full name of the player
+                </p>
+              </div>
             </div>
             <div className="col-span-2">
-              <Label htmlFor="university">University</Label>
-              <Input
-                id="university"
-                value={newPlayer.university}
-                onChange={(e) =>
-                  setNewPlayer({ ...newPlayer, university: e.target.value })
-                }
-              />
+              <div className="space-y-2">
+                <Label htmlFor="university" className="text-sm font-medium">
+                  University *
+                </Label>
+                <Input
+                  id="university"
+                  value={newPlayer.university}
+                  onChange={(e) =>
+                    setNewPlayer({ ...newPlayer, university: e.target.value })
+                  }
+                  placeholder="Enter university name"
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  University the player represents
+                </p>
+              </div>
             </div>
             <div className="col-span-2">
-              <Label htmlFor="category">Category</Label>
-              <select
-                id="category"
-                className="w-full p-2 border rounded-md"
-                value={newPlayer.category}
-                onChange={(e) =>
-                  setNewPlayer({ ...newPlayer, category: e.target.value })
-                }
-              >
-                <option value="Batsman">Batsman</option>
-                <option value="Bowler">Bowler</option>
-                <option value="All-Rounder">All-Rounder</option>
-              </select>
+              <div className="space-y-2">
+                <Label htmlFor="category" className="text-sm font-medium">
+                  Category *
+                </Label>
+                <select
+                  id="category"
+                  className="w-full p-2 border rounded-md"
+                  value={newPlayer.category}
+                  onChange={(e) =>
+                    setNewPlayer({ ...newPlayer, category: e.target.value })
+                  }
+                >
+                  <option value="Batsman">Batsman</option>
+                  <option value="Bowler">Bowler</option>
+                  <option value="All-Rounder">All-Rounder</option>
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Player's primary role
+                </p>
+              </div>
             </div>
-            <div>
-              <Label htmlFor="inningsPlayed">Innings Played</Label>
-              <Input
-                id="inningsPlayed"
-                type="number"
-                value={newPlayer.inningsPlayed}
-                onChange={(e) =>
-                  setNewPlayer({
-                    ...newPlayer,
-                    inningsPlayed: Number(e.target.value),
-                  })
-                }
-              />
+
+            <div className="col-span-2 mt-2">
+              <h3 className="font-medium text-sm mb-2">Batting Statistics</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="inningsPlayed"
+                    className="text-sm font-medium"
+                  >
+                    Innings Played *
+                  </Label>
+                  <Input
+                    id="inningsPlayed"
+                    type="number"
+                    value={newPlayer.inningsPlayed}
+                    onChange={(e) =>
+                      setNewPlayer({
+                        ...newPlayer,
+                        inningsPlayed: Number(e.target.value),
+                      })
+                    }
+                    className="w-full"
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="totalRuns" className="text-sm font-medium">
+                    Total Runs *
+                  </Label>
+                  <Input
+                    id="totalRuns"
+                    type="number"
+                    value={newPlayer.totalRuns}
+                    onChange={(e) =>
+                      setNewPlayer({
+                        ...newPlayer,
+                        totalRuns: Number(e.target.value),
+                      })
+                    }
+                    className="w-full"
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ballsFaced" className="text-sm font-medium">
+                    Balls Faced *
+                  </Label>
+                  <Input
+                    id="ballsFaced"
+                    type="number"
+                    value={newPlayer.ballsFaced}
+                    onChange={(e) =>
+                      setNewPlayer({
+                        ...newPlayer,
+                        ballsFaced: Number(e.target.value),
+                      })
+                    }
+                    className="w-full"
+                    min="0"
+                  />
+                </div>
+              </div>
             </div>
-            <div>
-              <Label htmlFor="totalRuns">Total Runs</Label>
-              <Input
-                id="totalRuns"
-                type="number"
-                value={newPlayer.totalRuns}
-                onChange={(e) =>
-                  setNewPlayer({
-                    ...newPlayer,
-                    totalRuns: Number(e.target.value),
-                  })
-                }
-              />
+
+            <div className="col-span-2 mt-2">
+              <h3 className="font-medium text-sm mb-2">Bowling Statistics</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="wickets" className="text-sm font-medium">
+                    Wickets
+                  </Label>
+                  <Input
+                    id="wickets"
+                    type="number"
+                    value={newPlayer.wickets}
+                    onChange={(e) =>
+                      setNewPlayer({
+                        ...newPlayer,
+                        wickets: Number(e.target.value),
+                      })
+                    }
+                    className="w-full"
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="oversBowled" className="text-sm font-medium">
+                    Overs Bowled
+                  </Label>
+                  <Input
+                    id="oversBowled"
+                    type="number"
+                    value={newPlayer.oversBowled}
+                    onChange={(e) =>
+                      setNewPlayer({
+                        ...newPlayer,
+                        oversBowled: Number(e.target.value),
+                      })
+                    }
+                    className="w-full"
+                    min="0"
+                    step="0.1"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="runsConceded" className="text-sm font-medium">
+                    Runs Conceded
+                  </Label>
+                  <Input
+                    id="runsConceded"
+                    type="number"
+                    value={newPlayer.runsConceded}
+                    onChange={(e) =>
+                      setNewPlayer({
+                        ...newPlayer,
+                        runsConceded: Number(e.target.value),
+                      })
+                    }
+                    className="w-full"
+                    min="0"
+                  />
+                </div>
+              </div>
             </div>
-            <div>
-              <Label htmlFor="ballsFaced">Balls Faced</Label>
-              <Input
-                id="ballsFaced"
-                type="number"
-                value={newPlayer.ballsFaced}
-                onChange={(e) =>
-                  setNewPlayer({
-                    ...newPlayer,
-                    ballsFaced: Number(e.target.value),
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="wickets">Wickets</Label>
-              <Input
-                id="wickets"
-                type="number"
-                value={newPlayer.wickets}
-                onChange={(e) =>
-                  setNewPlayer({
-                    ...newPlayer,
-                    wickets: Number(e.target.value),
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="oversBowled">Overs Bowled</Label>
-              <Input
-                id="oversBowled"
-                type="number"
-                step="0.1"
-                value={newPlayer.oversBowled}
-                onChange={(e) =>
-                  setNewPlayer({
-                    ...newPlayer,
-                    oversBowled: Number(e.target.value),
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="runsConceded">Runs Conceded</Label>
-              <Input
-                id="runsConceded"
-                type="number"
-                value={newPlayer.runsConceded}
-                onChange={(e) =>
-                  setNewPlayer({
-                    ...newPlayer,
-                    runsConceded: Number(e.target.value),
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="economyRate">Economy Rate</Label>
-              <Input
-                id="economyRate"
-                type="number"
-                step="0.01"
-                value={newPlayer.economyRate}
-                onChange={(e) =>
-                  setNewPlayer({
-                    ...newPlayer,
-                    economyRate: Number(e.target.value),
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="price">Price</Label>
-              <Input
-                id="price"
-                type="number"
-                step="10000"
-                value={newPlayer.price}
-                onChange={(e) =>
-                  setNewPlayer({ ...newPlayer, price: Number(e.target.value) })
-                }
-              />
+
+            <div className="col-span-2 mt-3">
+              <p className="text-sm text-muted-foreground mb-2">
+                Note: Fields marked with * are required. Other statistics like
+                batting strike rate, batting average, economy rate, points and
+                value will be calculated automatically based on these inputs.
+              </p>
             </div>
           </div>
           <DialogFooter>
@@ -706,7 +916,7 @@ export default function PlayersManagement() {
 
       {/* Edit Player Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Player</DialogTitle>
             <DialogDescription>Update player details.</DialogDescription>
@@ -714,163 +924,220 @@ export default function PlayersManagement() {
           {selectedPlayer && (
             <div className="grid grid-cols-2 gap-4 py-4">
               <div className="col-span-2">
-                <Label htmlFor="edit-name">Player Name</Label>
-                <Input
-                  id="edit-name"
-                  value={selectedPlayer.name}
-                  onChange={(e) =>
-                    setSelectedPlayer({
-                      ...selectedPlayer,
-                      name: e.target.value,
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="edit-name" className="text-sm font-medium">
+                    Player Name *
+                  </Label>
+                  <Input
+                    id="edit-name"
+                    value={selectedPlayer.name}
+                    onChange={(e) =>
+                      setSelectedPlayer({
+                        ...selectedPlayer,
+                        name: e.target.value,
+                      })
+                    }
+                    placeholder="Enter player name"
+                    className="w-full"
+                  />
+                </div>
               </div>
               <div className="col-span-2">
-                <Label htmlFor="edit-university">University</Label>
-                <Input
-                  id="edit-university"
-                  value={selectedPlayer.university}
-                  onChange={(e) =>
-                    setSelectedPlayer({
-                      ...selectedPlayer,
-                      university: e.target.value,
-                    })
-                  }
-                />
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="edit-university"
+                    className="text-sm font-medium"
+                  >
+                    University *
+                  </Label>
+                  <Input
+                    id="edit-university"
+                    value={selectedPlayer.university}
+                    onChange={(e) =>
+                      setSelectedPlayer({
+                        ...selectedPlayer,
+                        university: e.target.value,
+                      })
+                    }
+                    placeholder="Enter university name"
+                    className="w-full"
+                  />
+                </div>
               </div>
               <div className="col-span-2">
-                <Label htmlFor="edit-category">Category</Label>
-                <select
-                  id="edit-category"
-                  className="w-full p-2 border rounded-md"
-                  value={selectedPlayer.category}
-                  onChange={(e) =>
-                    setSelectedPlayer({
-                      ...selectedPlayer,
-                      category: e.target.value,
-                    })
-                  }
-                >
-                  <option value="Batsman">Batsman</option>
-                  <option value="Bowler">Bowler</option>
-                  <option value="All-Rounder">All-Rounder</option>
-                </select>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="edit-category"
+                    className="text-sm font-medium"
+                  >
+                    Category *
+                  </Label>
+                  <select
+                    id="edit-category"
+                    className="w-full p-2 border rounded-md"
+                    value={selectedPlayer.category}
+                    onChange={(e) =>
+                      setSelectedPlayer({
+                        ...selectedPlayer,
+                        category: e.target.value,
+                      })
+                    }
+                  >
+                    <option value="Batsman">Batsman</option>
+                    <option value="Bowler">Bowler</option>
+                    <option value="All-Rounder">All-Rounder</option>
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    Player's primary role
+                  </p>
+                </div>
               </div>
-              <div>
-                <Label htmlFor="edit-inningsPlayed">Innings Played</Label>
-                <Input
-                  id="edit-inningsPlayed"
-                  type="number"
-                  value={selectedPlayer.inningsPlayed}
-                  onChange={(e) =>
-                    setSelectedPlayer({
-                      ...selectedPlayer,
-                      inningsPlayed: Number(e.target.value),
-                    })
-                  }
-                />
+
+              <div className="col-span-2 mt-2">
+                <h3 className="font-medium text-sm mb-2">Batting Statistics</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="edit-inningsPlayed"
+                      className="text-sm font-medium"
+                    >
+                      Innings Played *
+                    </Label>
+                    <Input
+                      id="edit-inningsPlayed"
+                      type="number"
+                      value={selectedPlayer.inningsPlayed}
+                      onChange={(e) =>
+                        setSelectedPlayer({
+                          ...selectedPlayer,
+                          inningsPlayed: Number(e.target.value),
+                        })
+                      }
+                      className="w-full"
+                      min="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="edit-totalRuns"
+                      className="text-sm font-medium"
+                    >
+                      Total Runs *
+                    </Label>
+                    <Input
+                      id="edit-totalRuns"
+                      type="number"
+                      value={selectedPlayer.totalRuns}
+                      onChange={(e) =>
+                        setSelectedPlayer({
+                          ...selectedPlayer,
+                          totalRuns: Number(e.target.value),
+                        })
+                      }
+                      className="w-full"
+                      min="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="edit-ballsFaced"
+                      className="text-sm font-medium"
+                    >
+                      Balls Faced *
+                    </Label>
+                    <Input
+                      id="edit-ballsFaced"
+                      type="number"
+                      value={selectedPlayer.ballsFaced}
+                      onChange={(e) =>
+                        setSelectedPlayer({
+                          ...selectedPlayer,
+                          ballsFaced: Number(e.target.value),
+                        })
+                      }
+                      className="w-full"
+                      min="0"
+                    />
+                  </div>
+                </div>
               </div>
-              <div>
-                <Label htmlFor="edit-totalRuns">Total Runs</Label>
-                <Input
-                  id="edit-totalRuns"
-                  type="number"
-                  value={selectedPlayer.totalRuns}
-                  onChange={(e) =>
-                    setSelectedPlayer({
-                      ...selectedPlayer,
-                      totalRuns: Number(e.target.value),
-                    })
-                  }
-                />
+
+              <div className="col-span-2 mt-2">
+                <h3 className="font-medium text-sm mb-2">Bowling Statistics</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="edit-wickets"
+                      className="text-sm font-medium"
+                    >
+                      Wickets
+                    </Label>
+                    <Input
+                      id="edit-wickets"
+                      type="number"
+                      value={selectedPlayer.wickets}
+                      onChange={(e) =>
+                        setSelectedPlayer({
+                          ...selectedPlayer,
+                          wickets: Number(e.target.value),
+                        })
+                      }
+                      className="w-full"
+                      min="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="edit-oversBowled"
+                      className="text-sm font-medium"
+                    >
+                      Overs Bowled
+                    </Label>
+                    <Input
+                      id="edit-oversBowled"
+                      type="number"
+                      value={selectedPlayer.oversBowled}
+                      onChange={(e) =>
+                        setSelectedPlayer({
+                          ...selectedPlayer,
+                          oversBowled: Number(e.target.value),
+                        })
+                      }
+                      className="w-full"
+                      min="0"
+                      step="0.1"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="edit-runsConceded"
+                      className="text-sm font-medium"
+                    >
+                      Runs Conceded
+                    </Label>
+                    <Input
+                      id="edit-runsConceded"
+                      type="number"
+                      value={selectedPlayer.runsConceded}
+                      onChange={(e) =>
+                        setSelectedPlayer({
+                          ...selectedPlayer,
+                          runsConceded: Number(e.target.value),
+                        })
+                      }
+                      className="w-full"
+                      min="0"
+                    />
+                  </div>
+                </div>
               </div>
-              <div>
-                <Label htmlFor="edit-ballsFaced">Balls Faced</Label>
-                <Input
-                  id="edit-ballsFaced"
-                  type="number"
-                  value={selectedPlayer.ballsFaced}
-                  onChange={(e) =>
-                    setSelectedPlayer({
-                      ...selectedPlayer,
-                      ballsFaced: Number(e.target.value),
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-wickets">Wickets</Label>
-                <Input
-                  id="edit-wickets"
-                  type="number"
-                  value={selectedPlayer.wickets}
-                  onChange={(e) =>
-                    setSelectedPlayer({
-                      ...selectedPlayer,
-                      wickets: Number(e.target.value),
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-oversBowled">Overs Bowled</Label>
-                <Input
-                  id="edit-oversBowled"
-                  type="number"
-                  step="0.1"
-                  value={selectedPlayer.oversBowled}
-                  onChange={(e) =>
-                    setSelectedPlayer({
-                      ...selectedPlayer,
-                      oversBowled: Number(e.target.value),
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-runsConceded">Runs Conceded</Label>
-                <Input
-                  id="edit-runsConceded"
-                  type="number"
-                  value={selectedPlayer.runsConceded}
-                  onChange={(e) =>
-                    setSelectedPlayer({
-                      ...selectedPlayer,
-                      runsConceded: Number(e.target.value),
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-economyRate">Economy Rate</Label>
-                <Input
-                  id="edit-economyRate"
-                  type="number"
-                  step="0.01"
-                  value={selectedPlayer.economyRate}
-                  onChange={(e) =>
-                    setSelectedPlayer({
-                      ...selectedPlayer,
-                      economyRate: Number(e.target.value),
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-price">Price</Label>
-                <Input
-                  id="edit-price"
-                  type="number"
-                  step="10000"
-                  value={selectedPlayer.price}
-                  onChange={(e) =>
-                    setSelectedPlayer({
-                      ...selectedPlayer,
-                      price: Number(e.target.value),
-                    })
-                  }
-                />
+
+              <div className="col-span-2 mt-3">
+                <p className="text-sm text-muted-foreground mb-2">
+                  Note: Fields marked with * are required. Calculated statistics
+                  (batting strike rate, batting average, economy rate, points,
+                  and value) will update automatically based on these inputs.
+                </p>
               </div>
             </div>
           )}

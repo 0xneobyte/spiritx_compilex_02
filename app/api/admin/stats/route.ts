@@ -39,14 +39,72 @@ export async function GET(req: NextRequest) {
       return player.wickets > highest.wickets ? player : highest;
     }, players[0]);
 
-    // Calculate averages
-    const totalPlayers = players.length;
+    // Calculate averages - only include non-zero values and relevant players
+    console.log("Total players:", players.length);
+
+    // Log all players' batting stats to see their values
+    console.log(
+      "All players' stats:",
+      players.slice(0, 5).map((p) => ({
+        name: p.name,
+        category: p.category,
+        battingStrikeRate: p.battingStrikeRate,
+        battingAverage: p.battingAverage,
+        inningsPlayed: p.inningsPlayed,
+        totalRuns: p.totalRuns,
+        ballsFaced: p.ballsFaced,
+      }))
+    );
+
+    // Try a different approach - directly calculate strike rates ourselves
+    const playersWithBattingData = players.filter(
+      (p) =>
+        // Include players with either runs or who have faced balls
+        (p.totalRuns > 0 || p.ballsFaced > 0) &&
+        // Either not a pure bowler or has batting data
+        (p.category !== "Bowler" || p.totalRuns > 0)
+    );
+
+    console.log(
+      "Players with any batting data:",
+      playersWithBattingData.length
+    );
+
+    // Calculate the averages manually to avoid using potentially zero fields
+    let totalBattingStrikeRate = 0;
+    let totalBattingAverage = 0;
+    let countForStrikeRate = 0;
+    let countForAverage = 0;
+
+    for (const player of playersWithBattingData) {
+      // Only include strike rate if player has faced balls
+      if (player.ballsFaced > 0) {
+        const strikeRate = (player.totalRuns / player.ballsFaced) * 100;
+        totalBattingStrikeRate += strikeRate;
+        countForStrikeRate++;
+        console.log(`${player.name} strike rate: ${strikeRate}`);
+      }
+
+      // Only include batting average if player has played innings
+      if (player.inningsPlayed > 0) {
+        const average = player.totalRuns / player.inningsPlayed;
+        totalBattingAverage += average;
+        countForAverage++;
+        console.log(`${player.name} average: ${average}`);
+      }
+    }
+
     const avgBattingStrikeRate =
-      players.reduce((sum, player) => sum + player.battingStrikeRate, 0) /
-      totalPlayers;
+      countForStrikeRate > 0 ? totalBattingStrikeRate / countForStrikeRate : 0;
     const avgBattingAverage =
-      players.reduce((sum, player) => sum + player.battingAverage, 0) /
-      totalPlayers;
+      countForAverage > 0 ? totalBattingAverage / countForAverage : 0;
+
+    console.log("Calculated averages:", {
+      battingStrikeRate: avgBattingStrikeRate,
+      battingAverage: avgBattingAverage,
+      countForStrikeRate,
+      countForAverage,
+    });
 
     // Count by category
     const categoryCounts = {
@@ -60,6 +118,15 @@ export async function GET(req: NextRequest) {
       counts[player.university] = (counts[player.university] || 0) + 1;
       return counts;
     }, {} as Record<string, number>);
+
+    // For testing - set hard-coded values to see if frontend displays them correctly
+    const testAvgBattingStrikeRate = 120.5;
+    const testAvgBattingAverage = 35.2;
+
+    console.log("Using test values:", {
+      testStrikeRate: testAvgBattingStrikeRate,
+      testBattingAvg: testAvgBattingAverage,
+    });
 
     return NextResponse.json(
       {
@@ -83,7 +150,7 @@ export async function GET(req: NextRequest) {
         },
         categoryCounts,
         universityCounts,
-        totalPlayers,
+        totalPlayers: players.length,
       },
       { status: 200 }
     );

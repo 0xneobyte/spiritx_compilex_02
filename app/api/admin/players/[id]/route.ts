@@ -140,20 +140,13 @@ export async function PUT(req: NextRequest, { params }: { params: Params }) {
       );
     }
 
-    // Don't allow modification of original dataset players
-    if (player.isFromOriginalDataset) {
-      return NextResponse.json(
-        { message: "Cannot modify players from the original dataset" },
-        { status: 403 }
-      );
-    }
-
+    // Remove restriction for original dataset players
     // Calculate derived statistics
     playerData = calculateStats(playerData);
 
     // Update player
     Object.keys(playerData).forEach((key) => {
-      if (key !== "_id" && key !== "isFromOriginalDataset") {
+      if (key !== "_id") {
         player[key] = playerData[key];
       }
     });
@@ -199,14 +192,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Params }) {
       );
     }
 
-    // Don't allow deletion of original dataset players
-    if (player.isFromOriginalDataset) {
-      return NextResponse.json(
-        { message: "Cannot delete players from the original dataset" },
-        { status: 403 }
-      );
-    }
-
+    // Remove restriction for original dataset players
     await Player.findByIdAndDelete(params.id);
 
     return NextResponse.json(
