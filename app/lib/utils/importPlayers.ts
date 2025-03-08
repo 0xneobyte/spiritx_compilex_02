@@ -3,6 +3,7 @@ import path from "path";
 import { parse } from "csv-parse/sync";
 import { connectToDB } from "./database";
 import Player from "../models/player";
+import User from "../models/user";
 
 interface PlayerCSVData {
   Name: string;
@@ -21,15 +22,33 @@ export const importPlayersFromCSV = async () => {
     await connectToDB();
 
     // Check if players are already imported
-    const playersCount = await Player.countDocuments({});
-    if (playersCount > 0) {
-      console.log("Players already imported, skipping...");
-      return;
+    const existingCount = await Player.countDocuments({});
+    if (existingCount > 0) {
+      return {
+        success: true,
+        message: "Players already imported, skipping...",
+        count: existingCount,
+        newlyImported: 0,
+      };
     }
 
     // Read the CSV file
     const csvFilePath = path.join(process.cwd(), "sample_data.csv");
+    console.log(`Reading CSV file from: ${csvFilePath}`);
+
+    if (!fs.existsSync(csvFilePath)) {
+      return {
+        success: false,
+        message: `CSV file not found at path: ${csvFilePath}`,
+        count: 0,
+        newlyImported: 0,
+      };
+    }
+
     const fileContent = fs.readFileSync(csvFilePath, { encoding: "utf-8" });
+    console.log(
+      `CSV file read successfully, content length: ${fileContent.length}`
+    );
 
     // Parse CSV
     const records = parse(fileContent, {
@@ -37,26 +56,42 @@ export const importPlayersFromCSV = async () => {
       skip_empty_lines: true,
     }) as PlayerCSVData[];
 
+    console.log(`Parsed ${records.length} records from CSV`);
+
     // Transform and save players
     const players = records.map((record) => ({
       name: record.Name,
       university: record.University,
       category: record.Category,
-      totalRuns: parseInt(record["Total Runs"]),
-      ballsFaced: parseInt(record["Balls Faced"]),
-      inningsPlayed: parseInt(record["Innings Played"]),
-      wickets: parseInt(record.Wickets),
-      oversBowled: parseInt(record["Overs Bowled"]),
-      runsConceded: parseInt(record["Runs Conceded"]),
+      totalRuns: parseInt(record["Total Runs"] || "0"),
+      ballsFaced: parseInt(record["Balls Faced"] || "0"),
+      inningsPlayed: parseInt(record["Innings Played"] || "0"),
+      wickets: parseInt(record.Wickets || "0"),
+      oversBowled: parseFloat(record["Overs Bowled"] || "0"),
+      runsConceded: parseInt(record["Runs Conceded"] || "0"),
       isFromOriginalDataset: true,
     }));
 
     // Save all players to database
-    await Player.insertMany(players);
+    const result = await Player.insertMany(players);
 
-    console.log(`Successfully imported ${players.length} players`);
+    return {
+      success: true,
+      message: `Successfully imported ${players.length} players`,
+      count: players.length,
+      newlyImported: players.length,
+    };
   } catch (error) {
     console.error("Error importing players:", error);
+    return {
+      success: false,
+      message: `Error importing players: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      error: error,
+      count: 0,
+      newlyImported: 0,
+    };
   }
 };
 
@@ -65,13 +100,15 @@ export const createPredefinedUser = async () => {
   try {
     await connectToDB();
 
-    const User = (await import("../models/user")).default;
-
     // Check if predefined user already exists
     const existingUser = await User.findOne({ username: "spiritx_2025" });
     if (existingUser) {
-      console.log("Predefined user already exists, skipping...");
-      return;
+      return {
+        success: true,
+        message: "Predefined user already exists, skipping...",
+        userCreated: false,
+        teamSize: existingUser.team.length,
+      };
     }
 
     // Find the required players for the predefined team
@@ -89,13 +126,32 @@ export const createPredefinedUser = async () => {
       "Lakshan Vandersay",
     ];
 
+    // Log all players in DB to help diagnosis
+    const allPlayers = await Player.find({}, "name");
+    console.log(`Total players in database: ${allPlayers.length}`);
+    console.log(
+      "Player names available:",
+      allPlayers.map((p) => p.name)
+    );
+
     const players = await Player.find({ name: { $in: requiredPlayers } });
+    console.log(
+      `Found ${players.length}/${requiredPlayers.length} required players`
+    );
 
     if (players.length !== requiredPlayers.length) {
-      console.error(
-        "Could not find all required players for the predefined team"
+      const missingPlayers = requiredPlayers.filter(
+        (name) => !players.some((player) => player.name === name)
       );
-      return;
+      return {
+        success: false,
+        message: `Could not find all required players for the predefined team. Missing: ${missingPlayers.join(
+          ", "
+        )}`,
+        userCreated: false,
+        teamSize: 0,
+        missingPlayers,
+      };
     }
 
     // Create the predefined user
@@ -109,8 +165,23 @@ export const createPredefinedUser = async () => {
     });
 
     await user.save();
-    console.log("Successfully created predefined user with team");
+
+    return {
+      success: true,
+      message: "Successfully created predefined user with team",
+      userCreated: true,
+      teamSize: players.length,
+    };
   } catch (error) {
     console.error("Error creating predefined user:", error);
+    return {
+      success: false,
+      message: `Error creating predefined user: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      error: error,
+      userCreated: false,
+      teamSize: 0,
+    };
   }
 };
