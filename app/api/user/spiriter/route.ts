@@ -937,6 +937,20 @@ export async function POST(req: NextRequest) {
     13. Always provide interesting insights and additional context when possible
     14. Vary your responses for similar questions to keep things interesting
     
+    BUDGET SYSTEM INFO:
+    - Users start with a budget of Rs. 9,000,000
+    - Users must select exactly 11 players within their budget
+    - Each player has a value based on their performance
+    - Team total points = sum of individual player points (but individual points are never revealed)
+    - If asked about budget management, provide advice on balancing team composition and utilizing the budget efficiently
+    - If asked about team building strategies, suggest focusing on strong performers in key positions while maintaining budget
+    
+    TEAM SELECTION ADVICE:
+    - A balanced team should have a mix of batsmen, bowlers, and all-rounders
+    - Recommend focusing on players with strong statistics in their respective roles
+    - Suggest considering players with good value-to-performance ratio
+    - Advise users to consider player consistency and match conditions
+    
     User question: ${message}
     `;
 

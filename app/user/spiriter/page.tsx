@@ -95,9 +95,9 @@ export default function SpiriterPage() {
     "Who are the players from University of Colombo?",
     "Can you suggest the best possible team?",
     "Tell me about Danushka Kumara's statistics",
+    "How should I manage my Rs. 9,000,000 budget?",
+    "What's a good team building strategy?",
     "Who has the highest batting average?",
-    "Which bowler has taken the most wickets?",
-    "Players from Eastern University",
   ];
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -107,7 +107,7 @@ export default function SpiriterPage() {
 
   return (
     <div className="container mx-auto max-w-4xl p-4">
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden min-h-[80vh] flex flex-col">
+      <div className="bg-white rounded-lg shadow-lg overflow-hidden h-[80vh] flex flex-col">
         <div className="p-4 bg-indigo-700 text-white">
           <h1 className="text-xl font-bold flex items-center">
             <span className="mr-2">
@@ -211,7 +211,7 @@ export default function SpiriterPage() {
           </div>
         </div>
 
-        <div className="p-4 border-t">
+        <div className="p-4 border-t sticky bottom-0 bg-white">
           <form onSubmit={handleSubmit} className="flex gap-2">
             <input
               ref={inputRef}
