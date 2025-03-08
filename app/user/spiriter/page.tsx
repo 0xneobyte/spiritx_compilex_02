@@ -50,13 +50,17 @@ export default function SpiriterPage() {
       // Add typing indicator
       setMessages((prev) => [...prev, { role: "assistant", content: "..." }]);
 
-      // Send request to API
+      // Only send the current question to the API, not the entire history
+      // This ensures each question is evaluated independently
       const response = await fetch("/api/user/spiriter", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message: input }),
+        body: JSON.stringify({
+          message: input,
+          // Don't include chat history in the request
+        }),
       });
 
       if (!response.ok) {
