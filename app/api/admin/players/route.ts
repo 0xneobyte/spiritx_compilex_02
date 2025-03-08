@@ -19,11 +19,53 @@ const calculateStats = (playerData: any) => {
       updatedPlayer.totalRuns / updatedPlayer.inningsPlayed;
   }
 
-  // Calculate Economy Rate
-  if (updatedPlayer.oversBowled && updatedPlayer.oversBowled > 0) {
-    updatedPlayer.economyRate =
-      updatedPlayer.runsConceded / updatedPlayer.oversBowled;
+  // Calculate balls bowled from overs (1 over = 6 balls)
+  const ballsBowled = updatedPlayer.oversBowled
+    ? updatedPlayer.oversBowled * 6
+    : 0;
+
+  // Calculate Bowling Strike Rate: Total Balls Bowled / Total Wickets Taken
+  if (updatedPlayer.wickets && updatedPlayer.wickets > 0) {
+    updatedPlayer.bowlingStrikeRate = ballsBowled / updatedPlayer.wickets;
+  } else {
+    updatedPlayer.bowlingStrikeRate = ballsBowled > 0 ? 999 : 0; // High value if bowled but no wickets
   }
+
+  // Calculate Economy Rate: (Runs Conceded / Balls Bowled) × 6
+  if (ballsBowled > 0) {
+    updatedPlayer.economyRate = (updatedPlayer.runsConceded / ballsBowled) * 6;
+  } else {
+    updatedPlayer.economyRate = 0;
+  }
+
+  // Calculate Player Points
+  let battingPoints = 0;
+  let bowlingPoints = 0;
+
+  // Batting component: (Batting Strike Rate / 5) + (Batting Average × 0.8)
+  if (updatedPlayer.battingStrikeRate > 0) {
+    battingPoints =
+      updatedPlayer.battingStrikeRate / 5 + updatedPlayer.battingAverage * 0.8;
+  }
+
+  // Bowling component: (500 / Bowling Strike Rate) + (140 / Economy Rate)
+  if (updatedPlayer.bowlingStrikeRate > 0 && updatedPlayer.economyRate > 0) {
+    bowlingPoints =
+      500 / updatedPlayer.bowlingStrikeRate + 140 / updatedPlayer.economyRate;
+  }
+
+  updatedPlayer.points = battingPoints + bowlingPoints;
+
+  // Calculate Player Value: (9 × Points + 100) × 1000, rounded to nearest 50,000
+  if (updatedPlayer.points > 0) {
+    const rawValue = (9 * updatedPlayer.points + 100) * 1000;
+    updatedPlayer.value = Math.round(rawValue / 50000) * 50000;
+  } else {
+    updatedPlayer.value = 100000; // Default value
+  }
+
+  // Set price to value
+  updatedPlayer.price = updatedPlayer.value;
 
   return updatedPlayer;
 };
