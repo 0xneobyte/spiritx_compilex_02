@@ -13,6 +13,18 @@ export async function GET(req: NextRequest) {
 
     await connectToDB();
 
+    // Handle admin user
+    if (auth.user.id === "admin") {
+      return NextResponse.json(
+        {
+          id: "admin",
+          username: auth.user.username,
+          role: "admin",
+        },
+        { status: 200 }
+      );
+    }
+
     // Find the user
     const user = await User.findById(auth.user.id).select("username budget");
 
@@ -25,6 +37,7 @@ export async function GET(req: NextRequest) {
         id: user._id,
         username: user.username,
         budget: user.budget,
+        role: auth.user.role,
       },
       { status: 200 }
     );
