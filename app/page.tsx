@@ -15,6 +15,7 @@ import {
   Award,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 export default function Home() {
   return (
@@ -95,7 +96,10 @@ export default function Home() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 pt-2">
                 <Link href="/auth/signup">
-                  <Button size="lg" className="bg-purple-600 hover:bg-purple-700 rounded-full h-14 px-8">
+                  <Button
+                    size="lg"
+                    className="bg-purple-600 hover:bg-purple-700 rounded-full h-14 px-8"
+                  >
                     Get Started <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
@@ -119,10 +123,18 @@ export default function Home() {
             >
               <div className="relative h-[450px] w-full rounded-3xl overflow-hidden shadow-2xl">
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 to-indigo-600/20" />
-                <img
+                <Image
                   src="https://images.unsplash.com/photo-1531415074968-036ba1b575da?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1747&q=80"
                   alt="Cricket players in action"
-                  className="w-full h-full object-cover"
+                  fill
+                  priority
+                  className="object-cover"
+                  onError={(e) => {
+                    // Fallback in case image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.onerror = null; // Prevent infinite error loop
+                    target.src = "/placeholder.svg?height=450&width=600"; // Fallback image
+                  }}
                 />
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-8">
                   <p className="text-white font-medium text-xl">
@@ -465,12 +477,21 @@ export default function Home() {
                     </span>
                   ))}
                 </div>
-                <p className="text-gray-700 mb-6">"{testimonial.quote}"</p>
+                <p className="text-gray-700 mb-6">{testimonial.quote}</p>
                 <div className="flex items-center">
-                  <img
+                  <Image
                     src={testimonial.avatar}
                     alt={testimonial.name}
-                    className="w-12 h-12 rounded-full mr-4 border-2 border-purple-200"
+                    width={48}
+                    height={48}
+                    className="rounded-full mr-4 border-2 border-purple-200 object-cover"
+                    onError={(e) => {
+                      // Fallback in case avatar fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null; // Prevent infinite error loop
+                      target.src =
+                        "/placeholder.svg?height=48&width=48&text=User"; // Fallback image
+                    }}
                   />
                   <div>
                     <p className="font-bold">{testimonial.name}</p>
