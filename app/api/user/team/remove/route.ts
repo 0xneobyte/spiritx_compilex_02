@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const { playerId } = await req.json();
+    const { playerId, playerValue } = await req.json();
 
     if (!playerId) {
       return NextResponse.json(
@@ -50,9 +50,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Use the provided player value if available (for dynamically calculated values)
+    // Otherwise use the value from the database
+    const valueToRefund = playerValue !== undefined ? playerValue : player.value;
+
     // Remove player from team and refund budget
     user.team.splice(playerIndex, 1);
-    user.budget += player.value;
+    user.budget += valueToRefund;
 
     await user.save();
 
@@ -64,7 +68,7 @@ export async function POST(req: NextRequest) {
         player: {
           id: player._id,
           name: player.name,
-          value: player.value,
+          value: valueToRefund,
         },
       },
       { status: 200 }

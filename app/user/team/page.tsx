@@ -93,12 +93,30 @@ export default function TeamPage() {
 
   const addPlayerToTeam = async (playerId: string) => {
     try {
+      // Find the player to get their value (calculated if needed)
+      const playerToAdd = allPlayers.find((p) => p._id === playerId);
+      if (!playerToAdd) {
+        throw new Error("Player not found");
+      }
+
+      // Get the actual value that should be used (from DB or calculated)
+      const playerValue = getPlayerValue(playerToAdd);
+
+      // Check if there's enough budget
+      if (budget < playerValue) {
+        toast.error("Insufficient budget to add this player");
+        return;
+      }
+
       const response = await fetch("/api/user/team/add", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ playerId }),
+        body: JSON.stringify({
+          playerId,
+          playerValue: playerValue, // Send the calculated value to ensure consistency
+        }),
       });
 
       const data = await response.json();
@@ -108,18 +126,17 @@ export default function TeamPage() {
       }
 
       // Update the local state
-      const updatedPlayer = allPlayers.find((p) => p._id === playerId);
-      if (updatedPlayer) {
-        setUserTeam([...userTeam, updatedPlayer]);
-        setBudget(data.budget);
+      setUserTeam([...userTeam, playerToAdd]);
 
-        // Check if team is complete
-        if (data.teamSize === 11) {
-          // Refresh to get the team points calculation
-          const teamResponse = await fetch("/api/user/team");
-          const teamData = await teamResponse.json();
-          setTeamPoints(teamData.teamPoints);
-        }
+      // Update budget by subtracting the player's value
+      setBudget((prevBudget) => prevBudget - playerValue);
+
+      // Check if team is complete
+      if (userTeam.length + 1 === 11) {
+        // Refresh to get the team points calculation
+        const teamResponse = await fetch("/api/user/team");
+        const teamData = await teamResponse.json();
+        setTeamPoints(teamData.teamPoints);
       }
 
       toast.success("Player added to your team");
@@ -130,12 +147,24 @@ export default function TeamPage() {
 
   const removePlayerFromTeam = async (playerId: string) => {
     try {
+      // Find the player to get their value (calculated if needed)
+      const playerToRemove = userTeam.find((p) => p._id === playerId);
+      if (!playerToRemove) {
+        throw new Error("Player not found in your team");
+      }
+
+      // Get the actual value that should be used (from DB or calculated)
+      const playerValue = getPlayerValue(playerToRemove);
+
       const response = await fetch("/api/user/team/remove", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ playerId }),
+        body: JSON.stringify({
+          playerId,
+          playerValue: playerValue, // Send the calculated value to ensure consistency
+        }),
       });
 
       const data = await response.json();
@@ -146,7 +175,9 @@ export default function TeamPage() {
 
       // Update the local state
       setUserTeam(userTeam.filter((p) => p._id !== playerId));
-      setBudget(data.budget);
+
+      // Update budget by adding back the player's value
+      setBudget((prevBudget) => prevBudget + playerValue);
 
       // Reset team points if team is no longer complete
       if (userTeam.length <= 11) {
@@ -440,6 +471,9 @@ export default function TeamPage() {
                           </div>
                           <div>
                             <h3 className="font-medium">{player.name}</h3>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {player.university}
+                            </p>
                             <Badge
                               className={`${getCategoryColor(
                                 player.category
@@ -447,9 +481,6 @@ export default function TeamPage() {
                             >
                               {player.category}
                             </Badge>
-                            <p className="text-sm text-gray-600 mt-1">
-                              {player.university}
-                            </p>
                             <p className="text-sm font-medium text-gray-700 mt-1">
                               {formatCurrency(getPlayerValue(player))}
                             </p>

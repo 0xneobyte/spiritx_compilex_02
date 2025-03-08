@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const { playerId } = await req.json();
+    const { playerId, playerValue } = await req.json();
 
     if (!playerId) {
       return NextResponse.json(
@@ -60,8 +60,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Use the provided player value if available (for dynamically calculated values)
+    // Otherwise use the value from the database
+    const valueToDeduct =
+      playerValue !== undefined ? playerValue : player.value;
+
     // Check if user has enough budget
-    if (user.budget < player.value) {
+    if (user.budget < valueToDeduct) {
       return NextResponse.json(
         { message: "Insufficient budget to add this player" },
         { status: 400 }
@@ -70,7 +75,7 @@ export async function POST(req: NextRequest) {
 
     // Add player to team and update budget
     user.team.push(player._id);
-    user.budget -= player.value;
+    user.budget -= valueToDeduct;
 
     await user.save();
 
@@ -82,7 +87,7 @@ export async function POST(req: NextRequest) {
         player: {
           id: player._id,
           name: player.name,
-          value: player.value,
+          value: valueToDeduct,
         },
       },
       { status: 200 }
