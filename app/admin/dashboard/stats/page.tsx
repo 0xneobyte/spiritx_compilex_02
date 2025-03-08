@@ -43,6 +43,8 @@ interface Player {
   wickets: number;
   economyRate: number;
   price: number;
+  oversBowled: number;
+  runsConceded: number;
   isFromOriginalDataset: boolean;
 }
 
@@ -54,6 +56,35 @@ export default function PlayerStats() {
   const [sortField, setSortField] = useState<string>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+  // Calculate cricket statistics
+  const calculateStats = (player: any) => {
+    const calculatedPlayer = { ...player };
+
+    // Calculate Batting Strike Rate: (Total Runs / Balls Faced) × 100
+    if (player.ballsFaced && player.ballsFaced > 0) {
+      calculatedPlayer.battingStrikeRate =
+        (player.totalRuns / player.ballsFaced) * 100;
+    } else {
+      calculatedPlayer.battingStrikeRate = 0;
+    }
+
+    // Calculate Batting Average: Total Runs / Innings Played
+    if (player.inningsPlayed && player.inningsPlayed > 0) {
+      calculatedPlayer.battingAverage = player.totalRuns / player.inningsPlayed;
+    } else {
+      calculatedPlayer.battingAverage = 0;
+    }
+
+    // Calculate Economy Rate: Runs Conceded / Overs Bowled
+    if (player.oversBowled && player.oversBowled > 0) {
+      calculatedPlayer.economyRate = player.runsConceded / player.oversBowled;
+    } else {
+      calculatedPlayer.economyRate = 0;
+    }
+
+    return calculatedPlayer;
+  };
 
   // Fetch players
   useEffect(() => {
@@ -67,8 +98,27 @@ export default function PlayerStats() {
         }
 
         const data = await response.json();
-        setPlayers(data.players);
-        setFilteredPlayers(data.players);
+        // Ensure all players have required properties and calculate derived statistics
+        const cleanedPlayers = data.players.map((player: any) => {
+          const basePlayer = {
+            ...player,
+            battingStrikeRate: player.battingStrikeRate || 0,
+            battingAverage: player.battingAverage || 0,
+            economyRate: player.economyRate || 0,
+            price: player.price || 0,
+            inningsPlayed: player.inningsPlayed || 0,
+            wickets: player.wickets || 0,
+            oversBowled: player.oversBowled || 0,
+            runsConceded: player.runsConceded || 0,
+            ballsFaced: player.ballsFaced || 0,
+            totalRuns: player.totalRuns || 0,
+          };
+
+          // Calculate statistics based on raw data
+          return calculateStats(basePlayer);
+        });
+        setPlayers(cleanedPlayers);
+        setFilteredPlayers(cleanedPlayers);
       } catch (error) {
         console.error("Error fetching players:", error);
         toast.error("Failed to load players");
@@ -134,6 +184,17 @@ export default function PlayerStats() {
   const getSortIndicator = (field: string) => {
     if (sortField !== field) return null;
     return sortDirection === "asc" ? " ↑" : " ↓";
+  };
+
+  // Safe number formatter
+  const formatNumber = (value: number | undefined, decimals = 0) => {
+    if (value === undefined || value === null) return "0";
+
+    if (decimals > 0) {
+      return value.toFixed(decimals);
+    }
+
+    return value.toLocaleString() || "0";
   };
 
   return (
@@ -252,6 +313,12 @@ export default function PlayerStats() {
                   </TableHead>
                   <TableHead
                     className="text-right cursor-pointer"
+                    onClick={() => handleSort("inningsPlayed")}
+                  >
+                    Innings {getSortIndicator("inningsPlayed")}
+                  </TableHead>
+                  <TableHead
+                    className="text-right cursor-pointer"
                     onClick={() => handleSort("totalRuns")}
                   >
                     Runs {getSortIndicator("totalRuns")}
@@ -261,6 +328,18 @@ export default function PlayerStats() {
                     onClick={() => handleSort("wickets")}
                   >
                     Wickets {getSortIndicator("wickets")}
+                  </TableHead>
+                  <TableHead
+                    className="text-right cursor-pointer"
+                    onClick={() => handleSort("oversBowled")}
+                  >
+                    Overs {getSortIndicator("oversBowled")}
+                  </TableHead>
+                  <TableHead
+                    className="text-right cursor-pointer"
+                    onClick={() => handleSort("runsConceded")}
+                  >
+                    Runs Conceded {getSortIndicator("runsConceded")}
                   </TableHead>
                   <TableHead
                     className="text-right cursor-pointer"
@@ -315,29 +394,38 @@ export default function PlayerStats() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        {player.totalRuns}
+                        {player.inningsPlayed || 0}
                       </TableCell>
                       <TableCell className="text-right">
-                        {player.wickets}
+                        {player.totalRuns || 0}
                       </TableCell>
                       <TableCell className="text-right">
-                        {player.battingStrikeRate.toFixed(2)}
+                        {player.wickets || 0}
                       </TableCell>
                       <TableCell className="text-right">
-                        {player.battingAverage.toFixed(2)}
+                        {formatNumber(player.oversBowled, 1)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {player.economyRate.toFixed(2)}
+                        {player.runsConceded || 0}
                       </TableCell>
                       <TableCell className="text-right">
-                        ${player.price.toLocaleString()}
+                        {formatNumber(player.battingStrikeRate, 2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatNumber(player.battingAverage, 2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatNumber(player.economyRate, 2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ${(player.price || 0).toLocaleString()}
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
                     <TableCell
-                      colSpan={9}
+                      colSpan={12}
                       className="text-center py-8 text-gray-500"
                     >
                       No players found matching the criteria
@@ -358,7 +446,7 @@ export default function PlayerStats() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {!loading && (
+              {!loading && players.length > 0 && (
                 <>
                   <div className="space-y-2">
                     <h3 className="text-lg font-semibold">Batting</h3>
@@ -369,7 +457,10 @@ export default function PlayerStats() {
                         </span>
                         <span className="font-medium">
                           {players.reduce(
-                            (max, p) => (p.totalRuns > max.totalRuns ? p : max),
+                            (max, p) =>
+                              (p.totalRuns || 0) > (max.totalRuns || 0)
+                                ? p
+                                : max,
                             players[0]
                           )?.name || "N/A"}
                         </span>
@@ -380,7 +471,10 @@ export default function PlayerStats() {
                         </span>
                         <span className="font-medium">
                           {players.reduce(
-                            (max, p) => (p.totalRuns > max.totalRuns ? p : max),
+                            (max, p) =>
+                              (p.totalRuns || 0) > (max.totalRuns || 0)
+                                ? p
+                                : max,
                             players[0]
                           )?.totalRuns || 0}
                         </span>
@@ -390,15 +484,17 @@ export default function PlayerStats() {
                           Best Strike Rate
                         </span>
                         <span className="font-medium">
-                          {players
-                            .reduce(
+                          {formatNumber(
+                            players.reduce(
                               (max, p) =>
-                                p.battingStrikeRate > max.battingStrikeRate
+                                (p.battingStrikeRate || 0) >
+                                (max.battingStrikeRate || 0)
                                   ? p
                                   : max,
                               players[0]
-                            )
-                            ?.battingStrikeRate.toFixed(2) || 0}
+                            )?.battingStrikeRate,
+                            2
+                          ) || "0"}
                         </span>
                       </div>
                     </div>
@@ -413,7 +509,8 @@ export default function PlayerStats() {
                         </span>
                         <span className="font-medium">
                           {players.reduce(
-                            (max, p) => (p.wickets > max.wickets ? p : max),
+                            (max, p) =>
+                              (p.wickets || 0) > (max.wickets || 0) ? p : max,
                             players[0]
                           )?.name || "N/A"}
                         </span>
@@ -424,7 +521,8 @@ export default function PlayerStats() {
                         </span>
                         <span className="font-medium">
                           {players.reduce(
-                            (max, p) => (p.wickets > max.wickets ? p : max),
+                            (max, p) =>
+                              (p.wickets || 0) > (max.wickets || 0) ? p : max,
                             players[0]
                           )?.wickets || 0}
                         </span>
@@ -434,15 +532,20 @@ export default function PlayerStats() {
                           Best Economy Rate
                         </span>
                         <span className="font-medium">
-                          {players
-                            .filter((p) => p.economyRate > 0)
-                            .reduce(
-                              (min, p) =>
-                                p.economyRate < min.economyRate ? p : min,
-                              players.find((p) => p.economyRate > 0) ||
-                                players[0]
-                            )
-                            ?.economyRate.toFixed(2) || "N/A"}
+                          {formatNumber(
+                            players
+                              .filter((p) => (p.economyRate || 0) > 0)
+                              .reduce(
+                                (min, p) =>
+                                  (p.economyRate || 999) <
+                                  (min.economyRate || 999)
+                                    ? p
+                                    : min,
+                                players.find((p) => (p.economyRate || 0) > 0) ||
+                                  players[0]
+                              )?.economyRate,
+                            2
+                          ) || "N/A"}
                         </span>
                       </div>
                     </div>
@@ -464,8 +567,10 @@ export default function PlayerStats() {
                         <span className="font-medium">
                           $
                           {Math.round(
-                            players.reduce((sum, p) => sum + p.price, 0) /
-                              (players.length || 1)
+                            players.reduce(
+                              (sum, p) => sum + (p.price || 0),
+                              0
+                            ) / (players.length || 1)
                           ).toLocaleString()}
                         </span>
                       </div>
@@ -475,7 +580,8 @@ export default function PlayerStats() {
                         </span>
                         <span className="font-medium">
                           {players.reduce(
-                            (max, p) => (p.price > max.price ? p : max),
+                            (max, p) =>
+                              (p.price || 0) > (max.price || 0) ? p : max,
                             players[0]
                           )?.name || "N/A"}
                         </span>

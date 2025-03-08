@@ -3,6 +3,31 @@ import { connectToDB } from "@/app/lib/utils/database";
 import Player from "@/app/lib/models/player";
 import { authenticateRequest } from "@/app/lib/utils/auth";
 
+// Helper function to calculate cricket statistics
+const calculateStats = (playerData: any) => {
+  const updatedPlayer = { ...playerData };
+
+  // Calculate Batting Strike Rate
+  if (updatedPlayer.ballsFaced && updatedPlayer.ballsFaced > 0) {
+    updatedPlayer.battingStrikeRate =
+      (updatedPlayer.totalRuns / updatedPlayer.ballsFaced) * 100;
+  }
+
+  // Calculate Batting Average
+  if (updatedPlayer.inningsPlayed && updatedPlayer.inningsPlayed > 0) {
+    updatedPlayer.battingAverage =
+      updatedPlayer.totalRuns / updatedPlayer.inningsPlayed;
+  }
+
+  // Calculate Economy Rate
+  if (updatedPlayer.oversBowled && updatedPlayer.oversBowled > 0) {
+    updatedPlayer.economyRate =
+      updatedPlayer.runsConceded / updatedPlayer.oversBowled;
+  }
+
+  return updatedPlayer;
+};
+
 interface Params {
   id: string;
 }
@@ -54,7 +79,7 @@ export async function PUT(req: NextRequest, { params }: { params: Params }) {
 
     await connectToDB();
 
-    const playerData = await req.json();
+    let playerData = await req.json();
     const player = await Player.findById(params.id);
 
     if (!player) {
@@ -71,6 +96,9 @@ export async function PUT(req: NextRequest, { params }: { params: Params }) {
         { status: 403 }
       );
     }
+
+    // Calculate derived statistics
+    playerData = calculateStats(playerData);
 
     // Update player
     Object.keys(playerData).forEach((key) => {

@@ -10,15 +10,10 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/app/components/ui/card";
-import { Button } from "@/app/components/ui/button";
-import { Input } from "@/app/components/ui/input";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/app/components/ui/tabs";
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -27,9 +22,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/app/components/ui/dialog";
-import { Label } from "@/app/components/ui/label";
-import { Skeleton } from "@/app/components/ui/skeleton";
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,8 +35,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/app/components/ui/alert-dialog";
-import { Badge } from "@/app/components/ui/badge";
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 
 interface Player {
   _id: string;
@@ -55,6 +50,8 @@ interface Player {
   inningsPlayed: number;
   wickets: number;
   economyRate: number;
+  oversBowled: number;
+  runsConceded: number;
   price: number;
   isFromOriginalDataset: boolean;
 }
@@ -79,8 +76,44 @@ export default function PlayersManagement() {
     inningsPlayed: 0,
     wickets: 0,
     economyRate: 0,
+    oversBowled: 0,
+    runsConceded: 0,
     price: 100000,
   });
+
+  // Format number safely
+  const formatNumber = (value: number | undefined, decimals = 0) => {
+    if (value === undefined || value === null) return "0";
+
+    if (decimals > 0) {
+      return value.toFixed(decimals);
+    }
+
+    return value.toLocaleString() || "0";
+  };
+
+  // Add a function to calculate cricket statistics
+  const calculateStats = (player: any) => {
+    const calculatedPlayer = { ...player };
+
+    // Calculate Batting Strike Rate: (Total Runs / Balls Faced) × 100
+    if (player.ballsFaced && player.ballsFaced > 0) {
+      calculatedPlayer.battingStrikeRate =
+        (player.totalRuns / player.ballsFaced) * 100;
+    }
+
+    // Calculate Batting Average: Total Runs / Innings Played
+    if (player.inningsPlayed && player.inningsPlayed > 0) {
+      calculatedPlayer.battingAverage = player.totalRuns / player.inningsPlayed;
+    }
+
+    // Calculate Economy Rate: Runs Conceded / Overs Bowled
+    if (player.oversBowled && player.oversBowled > 0) {
+      calculatedPlayer.economyRate = player.runsConceded / player.oversBowled;
+    }
+
+    return calculatedPlayer;
+  };
 
   // Fetch players
   useEffect(() => {
@@ -94,8 +127,29 @@ export default function PlayersManagement() {
         }
 
         const data = await response.json();
-        setPlayers(data.players);
-        setFilteredPlayers(data.players);
+
+        // Ensure all players have required properties and calculate derived statistics
+        const cleanedPlayers = data.players.map((player: any) => {
+          const basePlayer = {
+            ...player,
+            battingStrikeRate: player.battingStrikeRate || 0,
+            battingAverage: player.battingAverage || 0,
+            economyRate: player.economyRate || 0,
+            price: player.price || 0,
+            totalRuns: player.totalRuns || 0,
+            wickets: player.wickets || 0,
+            inningsPlayed: player.inningsPlayed || 0,
+            oversBowled: player.oversBowled || 0,
+            runsConceded: player.runsConceded || 0,
+            ballsFaced: player.ballsFaced || 0,
+          };
+
+          // Calculate statistics
+          return calculateStats(basePlayer);
+        });
+
+        setPlayers(cleanedPlayers);
+        setFilteredPlayers(cleanedPlayers);
       } catch (error) {
         console.error("Error fetching players:", error);
         toast.error("Failed to load players");
@@ -134,24 +188,15 @@ export default function PlayersManagement() {
   // Handle adding a new player
   const handleAddPlayer = async () => {
     try {
-      // Calculate strike rate if not provided
-      if (!newPlayer.battingStrikeRate && newPlayer.ballsFaced > 0) {
-        newPlayer.battingStrikeRate =
-          (newPlayer.totalRuns / newPlayer.ballsFaced) * 100;
-      }
-
-      // Calculate batting average if not provided
-      if (!newPlayer.battingAverage && newPlayer.inningsPlayed > 0) {
-        newPlayer.battingAverage =
-          newPlayer.totalRuns / newPlayer.inningsPlayed;
-      }
+      // Calculate derived statistics
+      const playerWithStats = calculateStats(newPlayer);
 
       const response = await fetch("/api/admin/players", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(newPlayer),
+        body: JSON.stringify(playerWithStats),
       });
 
       if (!response.ok) {
@@ -176,6 +221,8 @@ export default function PlayersManagement() {
         inningsPlayed: 0,
         wickets: 0,
         economyRate: 0,
+        oversBowled: 0,
+        runsConceded: 0,
         price: 100000,
       });
     } catch (error: any) {
@@ -189,12 +236,15 @@ export default function PlayersManagement() {
     if (!selectedPlayer) return;
 
     try {
+      // Calculate derived statistics
+      const playerWithStats = calculateStats(selectedPlayer);
+
       const response = await fetch(`/api/admin/players/${selectedPlayer._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(selectedPlayer),
+        body: JSON.stringify(playerWithStats),
       });
 
       if (!response.ok) {
@@ -341,24 +391,36 @@ export default function PlayersManagement() {
                 <CardContent>
                   <div className="grid grid-cols-2 gap-y-2 text-sm">
                     <div>
+                      <span className="font-medium">Innings:</span>{" "}
+                      {player.inningsPlayed || 0}
+                    </div>
+                    <div>
                       <span className="font-medium">Runs:</span>{" "}
-                      {player.totalRuns}
+                      {player.totalRuns || 0}
                     </div>
                     <div>
                       <span className="font-medium">Wickets:</span>{" "}
-                      {player.wickets}
+                      {player.wickets || 0}
                     </div>
                     <div>
                       <span className="font-medium">Strike Rate:</span>{" "}
-                      {player.battingStrikeRate.toFixed(2)}
+                      {formatNumber(player.battingStrikeRate, 2)}
                     </div>
                     <div>
                       <span className="font-medium">Economy:</span>{" "}
-                      {player.economyRate.toFixed(2)}
+                      {formatNumber(player.economyRate, 2)}
+                    </div>
+                    <div>
+                      <span className="font-medium">Overs:</span>{" "}
+                      {formatNumber(player.oversBowled, 1)}
+                    </div>
+                    <div className="col-span-2">
+                      <span className="font-medium">Runs Conceded:</span>{" "}
+                      {player.runsConceded || 0}
                     </div>
                     <div className="col-span-2">
                       <span className="font-medium">Price:</span> $
-                      {player.price.toLocaleString()}
+                      {(player.price || 0).toLocaleString()}
                     </div>
                   </div>
                 </CardContent>
@@ -460,6 +522,20 @@ export default function PlayersManagement() {
               </select>
             </div>
             <div>
+              <Label htmlFor="inningsPlayed">Innings Played</Label>
+              <Input
+                id="inningsPlayed"
+                type="number"
+                value={newPlayer.inningsPlayed}
+                onChange={(e) =>
+                  setNewPlayer({
+                    ...newPlayer,
+                    inningsPlayed: Number(e.target.value),
+                  })
+                }
+              />
+            </div>
+            <div>
               <Label htmlFor="totalRuns">Total Runs</Label>
               <Input
                 id="totalRuns"
@@ -488,20 +564,6 @@ export default function PlayersManagement() {
               />
             </div>
             <div>
-              <Label htmlFor="inningsPlayed">Innings Played</Label>
-              <Input
-                id="inningsPlayed"
-                type="number"
-                value={newPlayer.inningsPlayed}
-                onChange={(e) =>
-                  setNewPlayer({
-                    ...newPlayer,
-                    inningsPlayed: Number(e.target.value),
-                  })
-                }
-              />
-            </div>
-            <div>
               <Label htmlFor="wickets">Wickets</Label>
               <Input
                 id="wickets"
@@ -511,6 +573,35 @@ export default function PlayersManagement() {
                   setNewPlayer({
                     ...newPlayer,
                     wickets: Number(e.target.value),
+                  })
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="oversBowled">Overs Bowled</Label>
+              <Input
+                id="oversBowled"
+                type="number"
+                step="0.1"
+                value={newPlayer.oversBowled}
+                onChange={(e) =>
+                  setNewPlayer({
+                    ...newPlayer,
+                    oversBowled: Number(e.target.value),
+                  })
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="runsConceded">Runs Conceded</Label>
+              <Input
+                id="runsConceded"
+                type="number"
+                value={newPlayer.runsConceded}
+                onChange={(e) =>
+                  setNewPlayer({
+                    ...newPlayer,
+                    runsConceded: Number(e.target.value),
                   })
                 }
               />
@@ -606,6 +697,20 @@ export default function PlayersManagement() {
                 </select>
               </div>
               <div>
+                <Label htmlFor="edit-inningsPlayed">Innings Played</Label>
+                <Input
+                  id="edit-inningsPlayed"
+                  type="number"
+                  value={selectedPlayer.inningsPlayed}
+                  onChange={(e) =>
+                    setSelectedPlayer({
+                      ...selectedPlayer,
+                      inningsPlayed: Number(e.target.value),
+                    })
+                  }
+                />
+              </div>
+              <div>
                 <Label htmlFor="edit-totalRuns">Total Runs</Label>
                 <Input
                   id="edit-totalRuns"
@@ -634,20 +739,6 @@ export default function PlayersManagement() {
                 />
               </div>
               <div>
-                <Label htmlFor="edit-inningsPlayed">Innings Played</Label>
-                <Input
-                  id="edit-inningsPlayed"
-                  type="number"
-                  value={selectedPlayer.inningsPlayed}
-                  onChange={(e) =>
-                    setSelectedPlayer({
-                      ...selectedPlayer,
-                      inningsPlayed: Number(e.target.value),
-                    })
-                  }
-                />
-              </div>
-              <div>
                 <Label htmlFor="edit-wickets">Wickets</Label>
                 <Input
                   id="edit-wickets"
@@ -657,6 +748,35 @@ export default function PlayersManagement() {
                     setSelectedPlayer({
                       ...selectedPlayer,
                       wickets: Number(e.target.value),
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-oversBowled">Overs Bowled</Label>
+                <Input
+                  id="edit-oversBowled"
+                  type="number"
+                  step="0.1"
+                  value={selectedPlayer.oversBowled}
+                  onChange={(e) =>
+                    setSelectedPlayer({
+                      ...selectedPlayer,
+                      oversBowled: Number(e.target.value),
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-runsConceded">Runs Conceded</Label>
+                <Input
+                  id="edit-runsConceded"
+                  type="number"
+                  value={selectedPlayer.runsConceded}
+                  onChange={(e) =>
+                    setSelectedPlayer({
+                      ...selectedPlayer,
+                      runsConceded: Number(e.target.value),
                     })
                   }
                 />

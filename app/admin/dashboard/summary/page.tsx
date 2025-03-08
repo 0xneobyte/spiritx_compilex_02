@@ -45,6 +45,17 @@ export default function TournamentSummary() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Safe number formatter
+  const formatNumber = (value: number | undefined, decimals = 0) => {
+    if (value === undefined || value === null) return "0";
+
+    if (decimals > 0) {
+      return value.toFixed(decimals);
+    }
+
+    return value.toLocaleString() || "0";
+  };
+
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -56,7 +67,37 @@ export default function TournamentSummary() {
         }
 
         const data = await response.json();
-        setStats(data);
+
+        // Ensure all data has values to prevent undefined errors
+        const cleanedData = {
+          ...data,
+          totalRuns: data.totalRuns || 0,
+          totalWickets: data.totalWickets || 0,
+          highestRunScorer: {
+            ...(data.highestRunScorer || {}),
+            name: data.highestRunScorer?.name || "N/A",
+            university: data.highestRunScorer?.university || "N/A",
+            totalRuns: data.highestRunScorer?.totalRuns || 0,
+          },
+          highestWicketTaker: {
+            ...(data.highestWicketTaker || {}),
+            name: data.highestWicketTaker?.name || "N/A",
+            university: data.highestWicketTaker?.university || "N/A",
+            wickets: data.highestWicketTaker?.wickets || 0,
+          },
+          averages: {
+            battingStrikeRate: data.averages?.battingStrikeRate || 0,
+            battingAverage: data.averages?.battingAverage || 0,
+          },
+          categoryCounts: {
+            Batsman: data.categoryCounts?.Batsman || 0,
+            Bowler: data.categoryCounts?.Bowler || 0,
+            "All-Rounder": data.categoryCounts?.["All-Rounder"] || 0,
+          },
+          totalPlayers: data.totalPlayers || 0,
+        };
+
+        setStats(cleanedData);
       } catch (err: any) {
         setError(err.message || "An error occurred");
         toast.error("Failed to load tournament statistics");
@@ -122,7 +163,7 @@ export default function TournamentSummary() {
               <CardHeader className="pb-2">
                 <CardDescription>Total Runs</CardDescription>
                 <CardTitle className="text-4xl text-indigo-600">
-                  {stats.totalRuns.toLocaleString()}
+                  {formatNumber(stats.totalRuns)}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -136,7 +177,7 @@ export default function TournamentSummary() {
               <CardHeader className="pb-2">
                 <CardDescription>Total Wickets</CardDescription>
                 <CardTitle className="text-4xl text-indigo-600">
-                  {stats.totalWickets.toLocaleString()}
+                  {formatNumber(stats.totalWickets)}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -150,7 +191,7 @@ export default function TournamentSummary() {
               <CardHeader className="pb-2">
                 <CardDescription>Total Players</CardDescription>
                 <CardTitle className="text-4xl text-indigo-600">
-                  {stats.totalPlayers.toLocaleString()}
+                  {formatNumber(stats.totalPlayers)}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -232,7 +273,7 @@ export default function TournamentSummary() {
                       Average Batting Strike Rate
                     </h3>
                     <div className="text-2xl font-bold">
-                      {stats.averages.battingStrikeRate.toFixed(2)}
+                      {formatNumber(stats.averages.battingStrikeRate, 2)}
                     </div>
                   </div>
 
@@ -243,7 +284,7 @@ export default function TournamentSummary() {
                       Average Batting Average
                     </h3>
                     <div className="text-2xl font-bold">
-                      {stats.averages.battingAverage.toFixed(2)}
+                      {formatNumber(stats.averages.battingAverage, 2)}
                     </div>
                   </div>
 
@@ -290,7 +331,7 @@ export default function TournamentSummary() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(stats.universityCounts).map(
+                {Object.entries(stats.universityCounts || {}).map(
                   ([university, count]) => (
                     <div
                       key={university}
