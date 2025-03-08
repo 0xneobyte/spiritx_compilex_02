@@ -52,6 +52,9 @@ interface Player {
   economyRate: number;
   oversBowled: number;
   runsConceded: number;
+  bowlingStrikeRate: number;
+  points: number;
+  value: number;
   price: number;
   isFromOriginalDataset: boolean;
 }
@@ -78,6 +81,9 @@ export default function PlayersManagement() {
     economyRate: 0,
     oversBowled: 0,
     runsConceded: 0,
+    bowlingStrikeRate: 0,
+    points: 0,
+    value: 0,
     price: 100000,
   });
 
@@ -107,11 +113,52 @@ export default function PlayersManagement() {
       calculatedPlayer.battingAverage = player.totalRuns / player.inningsPlayed;
     }
 
-    // Calculate Economy Rate: Runs Conceded / Overs Bowled
-    if (player.oversBowled && player.oversBowled > 0) {
-      calculatedPlayer.economyRate = player.runsConceded / player.oversBowled;
+    // Calculate balls bowled from overs (1 over = 6 balls)
+    const ballsBowled = player.oversBowled ? player.oversBowled * 6 : 0;
+    
+    // Calculate Bowling Strike Rate: Total Balls Bowled / Total Wickets Taken
+    if (player.wickets && player.wickets > 0) {
+      calculatedPlayer.bowlingStrikeRate = ballsBowled / player.wickets;
+    } else {
+      calculatedPlayer.bowlingStrikeRate = ballsBowled > 0 ? 999 : 0; // High value if bowled but no wickets
     }
 
+    // Calculate Economy Rate: (Runs Conceded / Balls Bowled) × 6
+    if (ballsBowled > 0) {
+      calculatedPlayer.economyRate = (player.runsConceded / ballsBowled) * 6;
+    } else {
+      calculatedPlayer.economyRate = 0;
+    }
+
+    // Calculate Player Points
+    let battingPoints = 0;
+    let bowlingPoints = 0;
+    
+    // Batting component: (Batting Strike Rate / 5) + (Batting Average × 0.8)
+    if (calculatedPlayer.battingStrikeRate > 0) {
+      battingPoints = (calculatedPlayer.battingStrikeRate / 5) + 
+                       (calculatedPlayer.battingAverage * 0.8);
+    }
+    
+    // Bowling component: (500 / Bowling Strike Rate) + (140 / Economy Rate)
+    if (calculatedPlayer.bowlingStrikeRate > 0 && calculatedPlayer.economyRate > 0) {
+      bowlingPoints = (500 / calculatedPlayer.bowlingStrikeRate) + 
+                      (140 / calculatedPlayer.economyRate);
+    }
+    
+    calculatedPlayer.points = battingPoints + bowlingPoints;
+    
+    // Calculate Player Value: (9 × Points + 100) × 1000, rounded to nearest 50,000
+    if (calculatedPlayer.points > 0) {
+      const rawValue = (9 * calculatedPlayer.points + 100) * 1000;
+      calculatedPlayer.value = Math.round(rawValue / 50000) * 50000;
+    } else {
+      calculatedPlayer.value = 100000; // Default value
+    }
+    
+    // Set price to value
+    calculatedPlayer.price = calculatedPlayer.value;
+    
     return calculatedPlayer;
   };
 
@@ -223,6 +270,9 @@ export default function PlayersManagement() {
         economyRate: 0,
         oversBowled: 0,
         runsConceded: 0,
+        bowlingStrikeRate: 0,
+        points: 0,
+        value: 0,
         price: 100000,
       });
     } catch (error: any) {

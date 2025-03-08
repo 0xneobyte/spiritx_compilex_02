@@ -42,9 +42,12 @@ interface Player {
   inningsPlayed: number;
   wickets: number;
   economyRate: number;
-  price: number;
   oversBowled: number;
   runsConceded: number;
+  bowlingStrikeRate: number;
+  points: number;
+  value: number;
+  price: number;
   isFromOriginalDataset: boolean;
 }
 
@@ -76,11 +79,47 @@ export default function PlayerStats() {
       calculatedPlayer.battingAverage = 0;
     }
 
-    // Calculate Economy Rate: Runs Conceded / Overs Bowled
-    if (player.oversBowled && player.oversBowled > 0) {
-      calculatedPlayer.economyRate = player.runsConceded / player.oversBowled;
+    // Calculate balls bowled from overs (1 over = 6 balls)
+    const ballsBowled = player.oversBowled ? player.oversBowled * 6 : 0;
+    
+    // Calculate Bowling Strike Rate: Total Balls Bowled / Total Wickets Taken
+    if (player.wickets && player.wickets > 0) {
+      calculatedPlayer.bowlingStrikeRate = ballsBowled / player.wickets;
+    } else {
+      calculatedPlayer.bowlingStrikeRate = ballsBowled > 0 ? 999 : 0; // High value if bowled but no wickets
+    }
+
+    // Calculate Economy Rate: (Runs Conceded / Balls Bowled) × 6
+    if (ballsBowled > 0) {
+      calculatedPlayer.economyRate = (player.runsConceded / ballsBowled) * 6;
     } else {
       calculatedPlayer.economyRate = 0;
+    }
+
+    // Calculate Player Points
+    let battingPoints = 0;
+    let bowlingPoints = 0;
+    
+    // Batting component: (Batting Strike Rate / 5) + (Batting Average × 0.8)
+    if (calculatedPlayer.battingStrikeRate > 0) {
+      battingPoints = (calculatedPlayer.battingStrikeRate / 5) + 
+                       (calculatedPlayer.battingAverage * 0.8);
+    }
+    
+    // Bowling component: (500 / Bowling Strike Rate) + (140 / Economy Rate)
+    if (calculatedPlayer.bowlingStrikeRate > 0 && calculatedPlayer.economyRate > 0) {
+      bowlingPoints = (500 / calculatedPlayer.bowlingStrikeRate) + 
+                      (140 / calculatedPlayer.economyRate);
+    }
+    
+    calculatedPlayer.points = battingPoints + bowlingPoints;
+    
+    // Calculate Player Value: (9 × Points + 100) × 1000, rounded to nearest 50,000
+    if (calculatedPlayer.points > 0) {
+      const rawValue = (9 * calculatedPlayer.points + 100) * 1000;
+      calculatedPlayer.value = Math.round(rawValue / 50000) * 50000;
+    } else {
+      calculatedPlayer.value = 100000; // Default value
     }
 
     return calculatedPlayer;
@@ -105,6 +144,7 @@ export default function PlayerStats() {
             battingStrikeRate: player.battingStrikeRate || 0,
             battingAverage: player.battingAverage || 0,
             economyRate: player.economyRate || 0,
+            bowlingStrikeRate: player.bowlingStrikeRate || 0,
             price: player.price || 0,
             inningsPlayed: player.inningsPlayed || 0,
             wickets: player.wickets || 0,
@@ -112,6 +152,8 @@ export default function PlayerStats() {
             runsConceded: player.runsConceded || 0,
             ballsFaced: player.ballsFaced || 0,
             totalRuns: player.totalRuns || 0,
+            points: player.points || 0,
+            value: player.value || 0,
           };
 
           // Calculate statistics based on raw data
@@ -345,13 +387,19 @@ export default function PlayerStats() {
                     className="text-right cursor-pointer"
                     onClick={() => handleSort("battingStrikeRate")}
                   >
-                    Strike Rate {getSortIndicator("battingStrikeRate")}
+                    B.S.R {getSortIndicator("battingStrikeRate")}
                   </TableHead>
                   <TableHead
                     className="text-right cursor-pointer"
                     onClick={() => handleSort("battingAverage")}
                   >
-                    Batting Avg {getSortIndicator("battingAverage")}
+                    Bat Avg {getSortIndicator("battingAverage")}
+                  </TableHead>
+                  <TableHead
+                    className="text-right cursor-pointer"
+                    onClick={() => handleSort("bowlingStrikeRate")}
+                  >
+                    B.Strike {getSortIndicator("bowlingStrikeRate")}
                   </TableHead>
                   <TableHead
                     className="text-right cursor-pointer"
@@ -361,9 +409,15 @@ export default function PlayerStats() {
                   </TableHead>
                   <TableHead
                     className="text-right cursor-pointer"
-                    onClick={() => handleSort("price")}
+                    onClick={() => handleSort("points")}
                   >
-                    Price {getSortIndicator("price")}
+                    Points {getSortIndicator("points")}
+                  </TableHead>
+                  <TableHead
+                    className="text-right cursor-pointer"
+                    onClick={() => handleSort("value")}
+                  >
+                    Value {getSortIndicator("value")}
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -415,17 +469,23 @@ export default function PlayerStats() {
                         {formatNumber(player.battingAverage, 2)}
                       </TableCell>
                       <TableCell className="text-right">
+                        {formatNumber(player.bowlingStrikeRate, 2)}
+                      </TableCell>
+                      <TableCell className="text-right">
                         {formatNumber(player.economyRate, 2)}
                       </TableCell>
                       <TableCell className="text-right">
-                        ${(player.price || 0).toLocaleString()}
+                        {formatNumber(player.points, 1)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ₹{(player.value || 0).toLocaleString()}
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
                     <TableCell
-                      colSpan={12}
+                      colSpan={14}
                       className="text-center py-8 text-gray-500"
                     >
                       No players found matching the criteria
