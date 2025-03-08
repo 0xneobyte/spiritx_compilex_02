@@ -29,6 +29,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 interface Player {
   _id: string;
@@ -51,14 +64,29 @@ interface Player {
   isFromOriginalDataset: boolean;
 }
 
+// Update the getCategoryStyles function with a cleaner, minimalistic design using borders
+const getCategoryStyles = (category: string) => {
+  switch (category) {
+    case "Batsman":
+      return "bg-blue-50 text-blue-700 border-2 border-blue-400 hover:border-blue-500 hover:bg-blue-100 transition-colors";
+    case "Bowler":
+      return "bg-green-50 text-green-700 border-2 border-green-400 hover:border-green-500 hover:bg-green-100 transition-colors";
+    case "All-Rounder":
+      return "bg-purple-50 text-purple-700 border-2 border-purple-400 hover:border-purple-500 hover:bg-purple-100 transition-colors";
+    default:
+      return "bg-gray-50 text-gray-700 border-2 border-gray-400 hover:border-gray-500 hover:bg-gray-100 transition-colors";
+  }
+};
+
 export default function PlayerStats() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [filteredPlayers, setFilteredPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchText, setSearchText] = useState("");
   const [sortField, setSortField] = useState<string>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [displaySortField, setDisplaySortField] = useState("name");
 
   // Calculate cricket statistics
   const calculateStats = (player: any) => {
@@ -195,8 +223,8 @@ export default function PlayerStats() {
     }
 
     // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+    if (searchText) {
+      const query = searchText.toLowerCase();
       filtered = filtered.filter(
         (player) =>
           player.name.toLowerCase().includes(query) ||
@@ -221,20 +249,38 @@ export default function PlayerStats() {
     });
 
     setFilteredPlayers(filtered);
-  }, [players, selectedCategory, searchQuery, sortField, sortDirection]);
+  }, [players, selectedCategory, searchText, sortField, sortDirection]);
 
   // Toggle sort direction
   const handleSort = (field: string) => {
+    // If clicking on the same field, toggle sort direction
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
+      // If clicking on a new field, set it and default to ascending
       setSortField(field);
       setSortDirection("asc");
     }
+
+    // Also update display field for UI
+    setDisplaySortField(field);
   };
 
-  // Generate sort indicator
+  // Update the sort indicator to account for price/value relationship
   const getSortIndicator = (field: string) => {
+    // For price and value, show the indicator on both when either is selected
+    if (field === "price" && sortField === "value") {
+      return sortDirection === "asc" ? " ↑" : " ↓";
+    }
+    if (
+      field === "value" &&
+      sortField === "value" &&
+      displaySortField === "price"
+    ) {
+      return sortDirection === "asc" ? " ↑" : " ↓";
+    }
+
+    // Normal behavior for other fields
     if (sortField !== field) return null;
     return sortDirection === "asc" ? " ↑" : " ↓";
   };
@@ -249,6 +295,219 @@ export default function PlayerStats() {
 
     return value.toLocaleString() || "0";
   };
+
+  // Prepare data for charts with custom colors
+  const categoryColors: Record<string, string> = {
+    Batsman: "#0088FE",
+    Bowler: "#00C49F",
+    "All-Rounder": "#8884d8", // Purple color for All-Rounders
+  };
+
+  const categoryDistribution = players.reduce((acc: any[], player) => {
+    const existingCategory = acc.find((item) => item.name === player.category);
+    if (existingCategory) {
+      existingCategory.value++;
+      existingCategory.label = `${existingCategory.name} (${existingCategory.value})`;
+    } else {
+      acc.push({
+        name: player.category,
+        value: 1,
+        label: `${player.category} (1)`,
+        fill: categoryColors[player.category] || "#FFBB28", // Default fallback color
+      });
+    }
+    return acc;
+  }, []);
+
+  // Calculate performance metrics by category
+  const performanceByCategory = players.reduce((acc: any, player) => {
+    const category = player.category;
+    if (!acc[category]) {
+      acc[category] = {
+        name: category,
+        batting: 0,
+        bowling: 0,
+        count: 0,
+      };
+    }
+
+    // Batting metrics
+    if (player.battingAverage > 0) {
+      acc[category].batting += player.battingAverage;
+    }
+
+    // Bowling metrics
+    if (player.economyRate > 0) {
+      acc[category].bowling += player.economyRate;
+    }
+
+    acc[category].count++;
+    return acc;
+  }, {});
+
+  const performanceData = Object.values(performanceByCategory).map(
+    (metric: any) => ({
+      name: metric.name,
+      "Batting Average":
+        metric.count > 0 ? Math.round(metric.batting / metric.count) : 0,
+      "Economy Rate":
+        metric.count > 0
+          ? Number((metric.bowling / metric.count).toFixed(2))
+          : 0,
+    })
+  );
+
+  const topRunScorers = [...players]
+    .sort((a, b) => (b.totalRuns || 0) - (a.totalRuns || 0))
+    .slice(0, 5)
+    .map((player) => ({
+      name: player.name,
+      runs: player.totalRuns || 0,
+    }));
+
+  const topPerformers = [...players]
+    .sort((a, b) => (b.points || 0) - (a.points || 0))
+    .slice(0, 5)
+    .map((player) => ({
+      name: player.name,
+      points: Math.round(player.points || 0),
+      battingAverage: Math.round(player.battingAverage || 0),
+      economyRate: Number(player.economyRate?.toFixed(2) || 0),
+    }));
+
+  // Calculate correct statistics
+  const calcStatistics = () => {
+    if (!players || players.length === 0) return null;
+
+    // Find highest run scorer
+    const highestRunScorer = players.reduce(
+      (max, p) => ((p.totalRuns || 0) > (max.totalRuns || 0) ? p : max),
+      players[0]
+    );
+
+    // Find highest wicket taker
+    const highestWicketTaker = players.reduce(
+      (max, p) => ((p.wickets || 0) > (max.wickets || 0) ? p : max),
+      players[0]
+    );
+
+    // Find most valuable player by value (not price)
+    const mostValuablePlayer = players.reduce(
+      (max, p) => ((p.value || 0) > (max.value || 0) ? p : max),
+      players[0]
+    );
+
+    // Calculate average price correctly
+    // First ensure all players have a numeric price
+    const playersWithPrice = players.map((p) => ({
+      ...p,
+      price: typeof p.price === "string" ? parseFloat(p.price) : p.price || 0,
+    }));
+
+    // Use the value field if price is not available
+    const validPlayers = playersWithPrice.map((p) => ({
+      ...p,
+      price: p.price > 0 ? p.price : p.value || 0,
+    }));
+
+    // Calculate the average of all non-zero values
+    const nonZeroPlayers = validPlayers.filter((p) => p.price > 0);
+    const avgPrice =
+      nonZeroPlayers.length > 0
+        ? nonZeroPlayers.reduce((sum, p) => sum + p.price, 0) /
+          nonZeroPlayers.length
+        : 0;
+
+    return {
+      highestRunScorer,
+      highestWicketTaker,
+      mostValuablePlayer,
+      avgPrice,
+    };
+  };
+
+  const stats = calcStatistics();
+
+  // Also update the sortPlayers function if it exists
+  const sortPlayers = (players: Player[], field: string, direction: string) => {
+    // Always treat price sorting as value sorting
+    const effectiveField = field === "price" ? "value" : field;
+
+    return [...players].sort((a, b) => {
+      let valueA = a[effectiveField as keyof Player];
+      let valueB = b[effectiveField as keyof Player];
+
+      // Handle undefined, null, or NaN values
+      if (
+        valueA === undefined ||
+        valueA === null ||
+        (typeof valueA === "number" && isNaN(valueA))
+      )
+        valueA = 0;
+      if (
+        valueB === undefined ||
+        valueB === null ||
+        (typeof valueB === "number" && isNaN(valueB))
+      )
+        valueB = 0;
+
+      // Convert to numbers for numeric fields
+      if (typeof valueA === "string" && !isNaN(Number(valueA)))
+        valueA = Number(valueA);
+      if (typeof valueB === "string" && !isNaN(Number(valueB)))
+        valueB = Number(valueB);
+
+      if (direction === "asc") {
+        return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
+      } else {
+        return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
+      }
+    });
+  };
+
+  // Update the TableCell that displays the Value column to also show the price if available
+  // Find the part of the code where player values are displayed
+
+  // Also add a custom renderer for the "Value" cell
+  const formatValueCell = (player: Player) => {
+    // Format value as currency
+    return `Rs ${player.value?.toLocaleString() || 0}`;
+  };
+
+  // Update the handleSortFieldChange function
+  const handleSortFieldChange = (value: string) => {
+    setDisplaySortField(value);
+
+    if (value === "price") {
+      // When user selects Price, actually sort by value field
+      setSortField("value");
+    } else {
+      setSortField(value);
+    }
+    setSortDirection("asc"); // Reset direction when changing fields
+  };
+
+  // Add a proper getFilteredAndSortedPlayers function that uses our sortPlayers function
+  const getFilteredAndSortedPlayers = () => {
+    // First filter the players
+    const filteredPlayers = players.filter((player) => {
+      const matchesSearch =
+        searchText === "" ||
+        player.name.toLowerCase().includes(searchText.toLowerCase()) ||
+        player.university.toLowerCase().includes(searchText.toLowerCase());
+
+      const matchesCategory =
+        selectedCategory === "all" || player.category === selectedCategory;
+
+      return matchesSearch && matchesCategory;
+    });
+
+    // Then sort them using our custom sortPlayers function
+    return sortPlayers(filteredPlayers, sortField, sortDirection);
+  };
+
+  // Use this function to get the filtered and sorted players
+  const filteredAndSortedPlayers = getFilteredAndSortedPlayers();
 
   return (
     <div className="container mx-auto p-6">
@@ -268,6 +527,258 @@ export default function PlayerStats() {
         </Link>
       </div>
 
+      {!loading && players.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Batting</CardTitle>
+              <CardDescription>Key batting statistics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">
+                    Highest Run Scorer
+                  </span>
+                  <span className="font-medium">
+                    {stats?.highestRunScorer?.name || "N/A"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">
+                    Highest Total Runs
+                  </span>
+                  <span className="font-medium">
+                    {stats?.highestRunScorer?.totalRuns || 0}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">
+                    Best Strike Rate
+                  </span>
+                  <span className="font-medium">
+                    {formatNumber(
+                      players.reduce(
+                        (max, p) =>
+                          (p.battingStrikeRate || 0) >
+                          (max.battingStrikeRate || 0)
+                            ? p
+                            : max,
+                        players[0]
+                      )?.battingStrikeRate,
+                      2
+                    ) || "0"}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Bowling</CardTitle>
+              <CardDescription>Key bowling metrics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">
+                    Highest Wicket Taker
+                  </span>
+                  <span className="font-medium">
+                    {stats?.highestWicketTaker?.name || "N/A"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Most Wickets</span>
+                  <span className="font-medium">
+                    {stats?.highestWicketTaker?.wickets || 0}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">
+                    Best Economy Rate
+                  </span>
+                  <span className="font-medium">
+                    {formatNumber(
+                      players
+                        .filter((p) => (p.economyRate || 0) > 0)
+                        .reduce(
+                          (min, p) =>
+                            (p.economyRate || 999) < (min.economyRate || 999)
+                              ? p
+                              : min,
+                          players.find((p) => (p.economyRate || 0) > 0) ||
+                            players[0]
+                        )?.economyRate,
+                      2
+                    ) || "N/A"}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Overall</CardTitle>
+              <CardDescription>General statistics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Total Players</span>
+                  <span className="font-medium">{players.length}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Avg. Price</span>
+                  <span className="font-medium">
+                    Rs {formatNumber(stats?.avgPrice, 0)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">
+                    Most Valuable Player
+                  </span>
+                  <span className="font-medium">
+                    {stats?.mostValuablePlayer?.name || "N/A"}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Updated Charts Section */}
+      {!loading && players.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Player Categories</CardTitle>
+              <CardDescription>Distribution of player roles</CardDescription>
+            </CardHeader>
+            <CardContent className="h-[240px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryDistribution}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({ name, value }) => `${name} (${value})`}
+                    labelLine={true}
+                  >
+                    {categoryDistribution.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={
+                          entry.fill || categoryColors[entry.name] || "#FFBB28"
+                        }
+                        className="stroke-background hover:opacity-80"
+                      />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance by Category</CardTitle>
+              <CardDescription>
+                Average batting and bowling metrics
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-[240px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={performanceData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                >
+                  <XAxis
+                    dataKey="name"
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `${value}`}
+                  />
+                  <Bar
+                    dataKey="Batting Average"
+                    fill={categoryColors["Batsman"]}
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="Economy Rate"
+                    fill={categoryColors["Bowler"]}
+                    radius={[4, 4, 0, 0]}
+                  />
+                  <Tooltip
+                    cursor={{ opacity: 0.1 }}
+                    wrapperStyle={{
+                      background: "white",
+                      border: "1px solid #ccc",
+                      borderRadius: "8px",
+                      padding: "5px",
+                      zIndex: 1000,
+                      pointerEvents: "auto",
+                    }}
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-background border rounded-lg p-3 shadow-md">
+                            <p className="text-sm font-bold uppercase">
+                              {payload[0].payload.name}
+                            </p>
+                            <div className="grid gap-1 mt-2">
+                              {payload.map((entry, index) => (
+                                <div
+                                  key={index}
+                                  className="flex justify-between items-center gap-8"
+                                >
+                                  <div
+                                    className="w-3 h-3 rounded-full"
+                                    style={{ backgroundColor: entry.color }}
+                                  ></div>
+                                  <span className="text-sm text-muted-foreground">
+                                    {entry.name}:
+                                  </span>
+                                  <span className="text-sm font-bold">
+                                    {entry.value}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Legend
+                    formatter={(value) => (
+                      <span className="text-xs">{value}</span>
+                    )}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <Card className="mb-6">
         <CardHeader className="pb-3">
           <CardTitle>Statistics Controls</CardTitle>
@@ -276,22 +787,25 @@ export default function PlayerStats() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="text-sm font-medium mb-1 block">Search</label>
+              <label className="text-sm font-medium mb-1 block text-muted-foreground">
+                Search
+              </label>
               <Input
                 placeholder="Search by name or university"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                className="shadow-sm border-muted-foreground/20 focus:border-primary/30 transition-colors"
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">
+              <label className="text-sm font-medium mb-1 block text-muted-foreground">
                 Filter by Category
               </label>
               <Select
                 value={selectedCategory}
                 onValueChange={setSelectedCategory}
               >
-                <SelectTrigger>
+                <SelectTrigger className="shadow-sm border-muted-foreground/20 focus:border-primary/30 transition-colors">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -302,17 +816,16 @@ export default function PlayerStats() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">Sort By</label>
+            <div className="flex items-center gap-4 mb-4">
+              <label className="text-sm font-medium block text-muted-foreground">
+                Sort By
+              </label>
               <Select
-                value={sortField}
-                onValueChange={(value) => {
-                  setSortField(value);
-                  setSortDirection("desc");
-                }}
+                value={displaySortField}
+                onValueChange={handleSortFieldChange}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select field to sort by" />
+                <SelectTrigger className="w-[180px] shadow-sm border-muted-foreground/20 focus:border-primary/30 transition-colors">
+                  <SelectValue placeholder="Sort by..." />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="name">Name</SelectItem>
@@ -325,9 +838,20 @@ export default function PlayerStats() {
                     Batting Average
                   </SelectItem>
                   <SelectItem value="economyRate">Economy Rate</SelectItem>
-                  <SelectItem value="price">Price</SelectItem>
+                  <SelectItem value="points">Points</SelectItem>
+                  <SelectItem value="value">Value</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() =>
+                  setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+                }
+                className="shadow-sm hover:bg-accent/20 transition-colors"
+              >
+                {sortDirection === "asc" ? "↑" : "↓"}
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -344,106 +868,143 @@ export default function PlayerStats() {
         <div className="relative">
           <Card>
             <CardContent className="p-0 overflow-auto">
-              <div className="absolute top-0 left-0 right-0 h-12 bg-gradient-to-b from-indigo-500/20 to-transparent pointer-events-none flex items-center justify-center">
-                <div className="text-indigo-800 font-medium">Scroll →</div>
+              <div
+                className="absolute top-0 left-0 right-0 py-2 bg-gradient-to-b from-indigo-500/10 to-transparent 
+                flex items-center justify-center text-muted-foreground text-sm rounded-t-md"
+              >
+                <span className="flex items-center gap-1.5">
+                  <span className="animate-pulse">→</span>
+                  Scroll to see more columns
+                </span>
               </div>
-              <div className="p-2 bg-gray-50 border-b text-sm text-center text-gray-500 md:hidden">
-                Swipe right to see more columns
+              <div className="p-2 bg-muted/30 border-b text-sm text-center text-muted-foreground rounded-md shadow-sm md:hidden">
+                <span className="flex items-center justify-center gap-1.5">
+                  <span className="animate-pulse">←→</span>
+                  Swipe left or right to see all columns
+                </span>
               </div>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead
-                      className="cursor-pointer w-[180px]"
+                      className="cursor-pointer w-[180px] sticky top-0 hover:bg-accent/10 transition-colors"
                       onClick={() => handleSort("name")}
                     >
-                      Name {getSortIndicator("name")}
+                      <span className="flex items-center gap-2">
+                        Name {getSortIndicator("name")}
+                      </span>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer w-[200px]"
+                      className="cursor-pointer w-[200px] sticky top-0 hover:bg-accent/10 transition-colors"
                       onClick={() => handleSort("university")}
                     >
-                      University {getSortIndicator("university")}
+                      <span className="flex items-center gap-2">
+                        University {getSortIndicator("university")}
+                      </span>
                     </TableHead>
                     <TableHead
-                      className="cursor-pointer w-[120px]"
+                      className="cursor-pointer w-[120px] sticky top-0 hover:bg-accent/10 transition-colors"
                       onClick={() => handleSort("category")}
                     >
-                      Category {getSortIndicator("category")}
+                      <span className="flex items-center gap-2">
+                        Category {getSortIndicator("category")}
+                      </span>
                     </TableHead>
                     <TableHead
-                      className="text-right cursor-pointer w-[80px]"
+                      className="text-right cursor-pointer w-[80px] sticky top-0 hover:bg-accent/10 transition-colors"
                       onClick={() => handleSort("inningsPlayed")}
                     >
-                      Innings {getSortIndicator("inningsPlayed")}
+                      <span className="flex items-center gap-2">
+                        Innings {getSortIndicator("inningsPlayed")}
+                      </span>
                     </TableHead>
                     <TableHead
-                      className="text-right cursor-pointer w-[80px]"
+                      className="text-right cursor-pointer w-[80px] sticky top-0 hover:bg-accent/10 transition-colors"
                       onClick={() => handleSort("totalRuns")}
                     >
-                      Runs {getSortIndicator("totalRuns")}
+                      <span className="flex items-center gap-2">
+                        Runs {getSortIndicator("totalRuns")}
+                      </span>
                     </TableHead>
                     <TableHead
-                      className="text-right cursor-pointer w-[80px]"
+                      className="text-right cursor-pointer w-[80px] sticky top-0 hover:bg-accent/10 transition-colors"
                       onClick={() => handleSort("wickets")}
                     >
-                      Wickets {getSortIndicator("wickets")}
+                      <span className="flex items-center gap-2">
+                        Wickets {getSortIndicator("wickets")}
+                      </span>
                     </TableHead>
                     <TableHead
-                      className="text-right cursor-pointer w-[80px]"
+                      className="text-right cursor-pointer w-[80px] sticky top-0 hover:bg-accent/10 transition-colors"
                       onClick={() => handleSort("oversBowled")}
                     >
-                      Overs {getSortIndicator("oversBowled")}
+                      <span className="flex items-center gap-2">
+                        Overs {getSortIndicator("oversBowled")}
+                      </span>
                     </TableHead>
                     <TableHead
-                      className="text-right cursor-pointer w-[120px]"
+                      className="text-right cursor-pointer w-[120px] sticky top-0 hover:bg-accent/10 transition-colors"
                       onClick={() => handleSort("runsConceded")}
                     >
-                      Runs Conceded {getSortIndicator("runsConceded")}
+                      <span className="flex items-center gap-2">
+                        Runs Conceded {getSortIndicator("runsConceded")}
+                      </span>
                     </TableHead>
                     <TableHead
-                      className="text-right cursor-pointer w-[150px]"
+                      className="text-right cursor-pointer w-[150px] sticky top-0 hover:bg-accent/10 transition-colors"
                       onClick={() => handleSort("battingStrikeRate")}
                     >
-                      Batting Strike Rate{" "}
-                      {getSortIndicator("battingStrikeRate")}
+                      <span className="flex items-center gap-2">
+                        Batting Strike Rate{" "}
+                        {getSortIndicator("battingStrikeRate")}
+                      </span>
                     </TableHead>
                     <TableHead
-                      className="text-right cursor-pointer w-[150px]"
+                      className="text-right cursor-pointer w-[150px] sticky top-0 hover:bg-accent/10 transition-colors"
                       onClick={() => handleSort("battingAverage")}
                     >
-                      Batting Average {getSortIndicator("battingAverage")}
+                      <span className="flex items-center gap-2">
+                        Batting Average {getSortIndicator("battingAverage")}
+                      </span>
                     </TableHead>
                     <TableHead
-                      className="text-right cursor-pointer w-[150px]"
+                      className="text-right cursor-pointer w-[150px] sticky top-0 hover:bg-accent/10 transition-colors"
                       onClick={() => handleSort("bowlingStrikeRate")}
                     >
-                      Bowling Strike Rate{" "}
-                      {getSortIndicator("bowlingStrikeRate")}
+                      <span className="flex items-center gap-2">
+                        Bowling Strike Rate{" "}
+                        {getSortIndicator("bowlingStrikeRate")}
+                      </span>
                     </TableHead>
                     <TableHead
-                      className="text-right cursor-pointer w-[120px]"
+                      className="text-right cursor-pointer w-[120px] sticky top-0 hover:bg-accent/10 transition-colors"
                       onClick={() => handleSort("economyRate")}
                     >
-                      Economy Rate {getSortIndicator("economyRate")}
+                      <span className="flex items-center gap-2">
+                        Economy Rate {getSortIndicator("economyRate")}
+                      </span>
                     </TableHead>
                     <TableHead
-                      className="text-right cursor-pointer w-[80px]"
+                      className="text-right cursor-pointer w-[120px] sticky top-0 hover:bg-accent/10 transition-colors"
                       onClick={() => handleSort("points")}
                     >
-                      Points {getSortIndicator("points")}
+                      <span className="flex items-center gap-2">
+                        Points {getSortIndicator("points")}
+                      </span>
                     </TableHead>
                     <TableHead
-                      className="text-right cursor-pointer w-[120px]"
+                      className="text-right cursor-pointer w-[150px] sticky top-0 hover:bg-accent/10 transition-colors"
                       onClick={() => handleSort("value")}
                     >
-                      Value {getSortIndicator("value")}
+                      <span className="flex items-center gap-2">
+                        Value {getSortIndicator("value")}
+                      </span>
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPlayers.length > 0 ? (
-                    filteredPlayers.map((player) => (
+                  {filteredAndSortedPlayers.length > 0 ? (
+                    filteredAndSortedPlayers.map((player) => (
                       <TableRow key={player._id}>
                         <TableCell className="font-medium">
                           {player.name}
@@ -459,13 +1020,9 @@ export default function PlayerStats() {
                         <TableCell>{player.university}</TableCell>
                         <TableCell>
                           <Badge
-                            className={
-                              player.category === "Batsman"
-                                ? "bg-blue-500"
-                                : player.category === "Bowler"
-                                ? "bg-green-500"
-                                : "bg-purple-500"
-                            }
+                            className={`px-3 py-1 font-medium rounded-md shadow-sm ${getCategoryStyles(
+                              player.category
+                            )}`}
                           >
                             {player.category}
                           </Badge>
@@ -503,14 +1060,14 @@ export default function PlayerStats() {
                           {formatNumber(player.points, 1)}
                         </TableCell>
                         <TableCell className="text-right">
-                          Rs {(player.value || 0).toLocaleString()}
+                          {formatValueCell(player)}
                         </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
                       <TableCell
-                        colSpan={14}
+                        colSpan={15}
                         className="text-center py-8 text-gray-500"
                       >
                         No players found matching the criteria
@@ -523,163 +1080,6 @@ export default function PlayerStats() {
           </Card>
         </div>
       )}
-
-      <div className="mt-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Statistical Insights</CardTitle>
-            <CardDescription>Key performance metrics</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {!loading && players.length > 0 && (
-                <>
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-semibold">Batting</h3>
-                    <div className="bg-blue-50 p-4 rounded-md">
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm text-gray-600">
-                          Highest Run Scorer
-                        </span>
-                        <span className="font-medium">
-                          {players.reduce(
-                            (max, p) =>
-                              (p.totalRuns || 0) > (max.totalRuns || 0)
-                                ? p
-                                : max,
-                            players[0]
-                          )?.name || "N/A"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm text-gray-600">
-                          Highest Total Runs
-                        </span>
-                        <span className="font-medium">
-                          {players.reduce(
-                            (max, p) =>
-                              (p.totalRuns || 0) > (max.totalRuns || 0)
-                                ? p
-                                : max,
-                            players[0]
-                          )?.totalRuns || 0}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-600">
-                          Best Strike Rate
-                        </span>
-                        <span className="font-medium">
-                          {formatNumber(
-                            players.reduce(
-                              (max, p) =>
-                                (p.battingStrikeRate || 0) >
-                                (max.battingStrikeRate || 0)
-                                  ? p
-                                  : max,
-                              players[0]
-                            )?.battingStrikeRate,
-                            2
-                          ) || "0"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-semibold">Bowling</h3>
-                    <div className="bg-green-50 p-4 rounded-md">
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm text-gray-600">
-                          Highest Wicket Taker
-                        </span>
-                        <span className="font-medium">
-                          {players.reduce(
-                            (max, p) =>
-                              (p.wickets || 0) > (max.wickets || 0) ? p : max,
-                            players[0]
-                          )?.name || "N/A"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm text-gray-600">
-                          Most Wickets
-                        </span>
-                        <span className="font-medium">
-                          {players.reduce(
-                            (max, p) =>
-                              (p.wickets || 0) > (max.wickets || 0) ? p : max,
-                            players[0]
-                          )?.wickets || 0}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-600">
-                          Best Economy Rate
-                        </span>
-                        <span className="font-medium">
-                          {formatNumber(
-                            players
-                              .filter((p) => (p.economyRate || 0) > 0)
-                              .reduce(
-                                (min, p) =>
-                                  (p.economyRate || 999) <
-                                  (min.economyRate || 999)
-                                    ? p
-                                    : min,
-                                players.find((p) => (p.economyRate || 0) > 0) ||
-                                  players[0]
-                              )?.economyRate,
-                            2
-                          ) || "N/A"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-semibold">Overall</h3>
-                    <div className="bg-purple-50 p-4 rounded-md">
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm text-gray-600">
-                          Total Players
-                        </span>
-                        <span className="font-medium">{players.length}</span>
-                      </div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm text-gray-600">
-                          Avg. Price
-                        </span>
-                        <span className="font-medium">
-                          $
-                          {Math.round(
-                            players.reduce(
-                              (sum, p) => sum + (p.price || 0),
-                              0
-                            ) / (players.length || 1)
-                          ).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-600">
-                          Most Valuable Player
-                        </span>
-                        <span className="font-medium">
-                          {players.reduce(
-                            (max, p) =>
-                              (p.price || 0) > (max.price || 0) ? p : max,
-                            players[0]
-                          )?.name || "N/A"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
