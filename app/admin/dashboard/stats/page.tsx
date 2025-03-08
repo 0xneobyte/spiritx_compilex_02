@@ -341,174 +341,187 @@ export default function PlayerStats() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardContent className="p-0 overflow-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead
-                    className="cursor-pointer"
-                    onClick={() => handleSort("name")}
-                  >
-                    Name {getSortIndicator("name")}
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer"
-                    onClick={() => handleSort("university")}
-                  >
-                    University {getSortIndicator("university")}
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer"
-                    onClick={() => handleSort("category")}
-                  >
-                    Category {getSortIndicator("category")}
-                  </TableHead>
-                  <TableHead
-                    className="text-right cursor-pointer"
-                    onClick={() => handleSort("inningsPlayed")}
-                  >
-                    Innings {getSortIndicator("inningsPlayed")}
-                  </TableHead>
-                  <TableHead
-                    className="text-right cursor-pointer"
-                    onClick={() => handleSort("totalRuns")}
-                  >
-                    Runs {getSortIndicator("totalRuns")}
-                  </TableHead>
-                  <TableHead
-                    className="text-right cursor-pointer"
-                    onClick={() => handleSort("wickets")}
-                  >
-                    Wickets {getSortIndicator("wickets")}
-                  </TableHead>
-                  <TableHead
-                    className="text-right cursor-pointer"
-                    onClick={() => handleSort("oversBowled")}
-                  >
-                    Overs {getSortIndicator("oversBowled")}
-                  </TableHead>
-                  <TableHead
-                    className="text-right cursor-pointer"
-                    onClick={() => handleSort("runsConceded")}
-                  >
-                    Runs Conceded {getSortIndicator("runsConceded")}
-                  </TableHead>
-                  <TableHead
-                    className="text-right cursor-pointer"
-                    onClick={() => handleSort("battingStrikeRate")}
-                  >
-                    Batting Strike Rate {getSortIndicator("battingStrikeRate")}
-                  </TableHead>
-                  <TableHead
-                    className="text-right cursor-pointer"
-                    onClick={() => handleSort("battingAverage")}
-                  >
-                    Batting Average {getSortIndicator("battingAverage")}
-                  </TableHead>
-                  <TableHead
-                    className="text-right cursor-pointer"
-                    onClick={() => handleSort("bowlingStrikeRate")}
-                  >
-                    Bowling Strike Rate {getSortIndicator("bowlingStrikeRate")}
-                  </TableHead>
-                  <TableHead
-                    className="text-right cursor-pointer"
-                    onClick={() => handleSort("economyRate")}
-                  >
-                    Economy Rate {getSortIndicator("economyRate")}
-                  </TableHead>
-                  <TableHead
-                    className="text-right cursor-pointer"
-                    onClick={() => handleSort("points")}
-                  >
-                    Points {getSortIndicator("points")}
-                  </TableHead>
-                  <TableHead
-                    className="text-right cursor-pointer"
-                    onClick={() => handleSort("value")}
-                  >
-                    Value {getSortIndicator("value")}
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPlayers.length > 0 ? (
-                  filteredPlayers.map((player) => (
-                    <TableRow key={player._id}>
-                      <TableCell className="font-medium">
-                        {player.name}
-                        {player.isFromOriginalDataset && (
-                          <Badge variant="outline" className="ml-2 bg-blue-50">
-                            DS
+        <div className="relative">
+          <Card>
+            <CardContent className="p-0 overflow-auto">
+              <div className="absolute top-0 left-0 right-0 h-12 bg-gradient-to-b from-indigo-500/20 to-transparent pointer-events-none flex items-center justify-center">
+                <div className="text-indigo-800 font-medium">Scroll →</div>
+              </div>
+              <div className="p-2 bg-gray-50 border-b text-sm text-center text-gray-500 md:hidden">
+                Swipe right to see more columns
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead
+                      className="cursor-pointer w-[180px]"
+                      onClick={() => handleSort("name")}
+                    >
+                      Name {getSortIndicator("name")}
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer w-[200px]"
+                      onClick={() => handleSort("university")}
+                    >
+                      University {getSortIndicator("university")}
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer w-[120px]"
+                      onClick={() => handleSort("category")}
+                    >
+                      Category {getSortIndicator("category")}
+                    </TableHead>
+                    <TableHead
+                      className="text-right cursor-pointer w-[80px]"
+                      onClick={() => handleSort("inningsPlayed")}
+                    >
+                      Innings {getSortIndicator("inningsPlayed")}
+                    </TableHead>
+                    <TableHead
+                      className="text-right cursor-pointer w-[80px]"
+                      onClick={() => handleSort("totalRuns")}
+                    >
+                      Runs {getSortIndicator("totalRuns")}
+                    </TableHead>
+                    <TableHead
+                      className="text-right cursor-pointer w-[80px]"
+                      onClick={() => handleSort("wickets")}
+                    >
+                      Wickets {getSortIndicator("wickets")}
+                    </TableHead>
+                    <TableHead
+                      className="text-right cursor-pointer w-[80px]"
+                      onClick={() => handleSort("oversBowled")}
+                    >
+                      Overs {getSortIndicator("oversBowled")}
+                    </TableHead>
+                    <TableHead
+                      className="text-right cursor-pointer w-[120px]"
+                      onClick={() => handleSort("runsConceded")}
+                    >
+                      Runs Conceded {getSortIndicator("runsConceded")}
+                    </TableHead>
+                    <TableHead
+                      className="text-right cursor-pointer w-[150px]"
+                      onClick={() => handleSort("battingStrikeRate")}
+                    >
+                      Batting Strike Rate{" "}
+                      {getSortIndicator("battingStrikeRate")}
+                    </TableHead>
+                    <TableHead
+                      className="text-right cursor-pointer w-[150px]"
+                      onClick={() => handleSort("battingAverage")}
+                    >
+                      Batting Average {getSortIndicator("battingAverage")}
+                    </TableHead>
+                    <TableHead
+                      className="text-right cursor-pointer w-[150px]"
+                      onClick={() => handleSort("bowlingStrikeRate")}
+                    >
+                      Bowling Strike Rate{" "}
+                      {getSortIndicator("bowlingStrikeRate")}
+                    </TableHead>
+                    <TableHead
+                      className="text-right cursor-pointer w-[120px]"
+                      onClick={() => handleSort("economyRate")}
+                    >
+                      Economy Rate {getSortIndicator("economyRate")}
+                    </TableHead>
+                    <TableHead
+                      className="text-right cursor-pointer w-[80px]"
+                      onClick={() => handleSort("points")}
+                    >
+                      Points {getSortIndicator("points")}
+                    </TableHead>
+                    <TableHead
+                      className="text-right cursor-pointer w-[120px]"
+                      onClick={() => handleSort("value")}
+                    >
+                      Value {getSortIndicator("value")}
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredPlayers.length > 0 ? (
+                    filteredPlayers.map((player) => (
+                      <TableRow key={player._id}>
+                        <TableCell className="font-medium">
+                          {player.name}
+                          {player.isFromOriginalDataset && (
+                            <Badge
+                              variant="outline"
+                              className="ml-2 bg-blue-50"
+                            >
+                              DS
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>{player.university}</TableCell>
+                        <TableCell>
+                          <Badge
+                            className={
+                              player.category === "Batsman"
+                                ? "bg-blue-500"
+                                : player.category === "Bowler"
+                                ? "bg-green-500"
+                                : "bg-purple-500"
+                            }
+                          >
+                            {player.category}
                           </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>{player.university}</TableCell>
-                      <TableCell>
-                        <Badge
-                          className={
-                            player.category === "Batsman"
-                              ? "bg-blue-500"
-                              : player.category === "Bowler"
-                              ? "bg-green-500"
-                              : "bg-purple-500"
-                          }
-                        >
-                          {player.category}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {player.inningsPlayed || 0}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {player.totalRuns || 0}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {player.wickets || 0}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatNumber(player.oversBowled, 1)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {player.runsConceded || 0}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatNumber(player.battingStrikeRate, 2)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatNumber(player.battingAverage, 2)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {player.wickets > 0
-                          ? formatNumber(player.bowlingStrikeRate, 2)
-                          : "Undefined"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatNumber(player.economyRate, 2)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatNumber(player.points, 1)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        Rs {(player.value || 0).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {player.inningsPlayed || 0}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {player.totalRuns || 0}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {player.wickets || 0}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatNumber(player.oversBowled, 1)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {player.runsConceded || 0}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatNumber(player.battingStrikeRate, 2)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatNumber(player.battingAverage, 2)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {player.wickets > 0
+                            ? formatNumber(player.bowlingStrikeRate, 2)
+                            : "Undefined"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatNumber(player.economyRate, 2)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatNumber(player.points, 1)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          Rs {(player.value || 0).toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={14}
+                        className="text-center py-8 text-gray-500"
+                      >
+                        No players found matching the criteria
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={14}
-                      className="text-center py-8 text-gray-500"
-                    >
-                      No players found matching the criteria
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       <div className="mt-6">
