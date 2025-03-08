@@ -55,7 +55,14 @@ export default function UserLayout({
         username={username}
         onLogout={handleLogout}
       />
-      <main className="flex-grow">{children}</main>
+      <main className="flex-grow container mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        {children}
+      </main>
+      <footer className="bg-white border-t border-gray-200 py-4">
+        <div className="container mx-auto px-4 text-center text-sm text-gray-500">
+          <p>© {new Date().getFullYear()} Spirit11. All rights reserved.</p>
+        </div>
+      </footer>
       <ToastProvider />
     </div>
   );

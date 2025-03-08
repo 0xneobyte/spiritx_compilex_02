@@ -95,10 +95,7 @@ export default function Home() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 pt-2">
                 <Link href="/auth/signup">
-                  <Button
-                    size="lg"
-                    className="bg-purple-600 hover:bg-purple-700 rounded-full h-14 px-8"
-                  >
+                  <Button size="lg" className="bg-purple-600 hover:bg-purple-700 rounded-full h-14 px-8">
                     Get Started <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>

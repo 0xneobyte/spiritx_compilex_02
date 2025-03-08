@@ -69,12 +69,12 @@ export default function AdminLayout({
         username={username}
         onLogout={handleLogout}
       />
-      <main className="flex-grow">
+      <main className="flex-grow container mx-auto px-4 py-6 sm:px-6 lg:px-8">
         {loading ? (
-          <div className="flex items-center justify-center h-screen">
-            <div className="flex flex-col items-center gap-2">
-              <div className="size-8 text-primary animate-spin border-2 border-primary border-t-transparent rounded-full"></div>
-              <p className="text-sm text-muted-foreground">
+          <div className="flex items-center justify-center h-80">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-10 w-10 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
+              <p className="text-sm text-gray-500 font-medium">
                 Verifying admin access...
               </p>
             </div>
@@ -83,6 +83,14 @@ export default function AdminLayout({
           children
         )}
       </main>
+      <footer className="bg-white border-t border-gray-200 py-4">
+        <div className="container mx-auto px-4 text-center text-sm text-gray-500">
+          <p>
+            © {new Date().getFullYear()} Spirit11 Admin Panel. All rights
+            reserved.
+          </p>
+        </div>
+      </footer>
       <ToastProvider />
     </div>
   );
