@@ -3,7 +3,6 @@ import { connectToDB } from "@/app/lib/utils/database";
 import User from "@/app/lib/models/user";
 import Player from "@/app/lib/models/player";
 import { authenticateRequest } from "@/app/lib/utils/auth";
-import { sendUpdateToUser } from "../../../updates/route";
 
 export async function POST(req: NextRequest) {
   try {
@@ -79,19 +78,6 @@ export async function POST(req: NextRequest) {
     user.budget -= valueToDeduct;
 
     await user.save();
-
-    // Before the return statement, add this to send real-time update
-    sendUpdateToUser(auth.user.id, "team-update", {
-      message: "Player added to team successfully",
-      teamSize: user.team.length,
-      budget: user.budget,
-      player: {
-        id: player._id,
-        name: player.name,
-        value: valueToDeduct,
-      },
-      action: "add",
-    });
 
     return NextResponse.json(
       {
