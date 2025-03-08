@@ -28,7 +28,8 @@ const calculateStats = (playerData: any) => {
   if (updatedPlayer.wickets && updatedPlayer.wickets > 0) {
     updatedPlayer.bowlingStrikeRate = ballsBowled / updatedPlayer.wickets;
   } else {
-    updatedPlayer.bowlingStrikeRate = ballsBowled > 0 ? 999 : 0; // High value if bowled but no wickets
+    // For players with 0 wickets, set to null - we'll display N/A in the UI
+    updatedPlayer.bowlingStrikeRate = null;
   }
 
   // Calculate Economy Rate: (Runs Conceded / Balls Bowled) × 6
@@ -48,10 +49,18 @@ const calculateStats = (playerData: any) => {
       updatedPlayer.battingStrikeRate / 5 + updatedPlayer.battingAverage * 0.8;
   }
 
-  // Bowling component: (500 / Bowling Strike Rate) + (140 / Economy Rate)
-  if (updatedPlayer.bowlingStrikeRate > 0 && updatedPlayer.economyRate > 0) {
-    bowlingPoints =
-      500 / updatedPlayer.bowlingStrikeRate + 140 / updatedPlayer.economyRate;
+  // Only include bowling strike rate component if player has taken wickets
+  if (
+    updatedPlayer.wickets &&
+    updatedPlayer.wickets > 0 &&
+    updatedPlayer.bowlingStrikeRate > 0
+  ) {
+    bowlingPoints += 500 / updatedPlayer.bowlingStrikeRate;
+  }
+
+  // Always include economy rate component if economy rate is > 0
+  if (updatedPlayer.economyRate > 0) {
+    bowlingPoints += 140 / updatedPlayer.economyRate;
   }
 
   updatedPlayer.points = battingPoints + bowlingPoints;
@@ -145,23 +154,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Calculate statistics if not provided
-    playerData = calculateStats(playerData);
-
-    // Set as not from original dataset
-    playerData.isFromOriginalDataset = false;
+    // Calculate statistics
+    const updatedPlayer = calculateStats(playerData);
 
     // Create new player
-    const player = new Player(playerData);
+    const player = new Player(updatedPlayer);
     await player.save();
 
-    return NextResponse.json(
-      {
-        message: "Player created successfully",
-        player,
-      },
-      { status: 201 }
-    );
+    return NextResponse.json({ player }, { status: 201 });
   } catch (error) {
     console.error("Error creating player:", error);
     return NextResponse.json(
