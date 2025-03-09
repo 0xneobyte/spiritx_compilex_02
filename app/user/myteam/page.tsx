@@ -68,18 +68,6 @@ export default function TeamPage() {
     return points;
   }, []);
 
-  // Calculate team points wrapped in useCallback
-  const calculateTeamPoints = useCallback(
-    (team = userTeam) => {
-      if (team.length !== 11) return null;
-      return team.reduce(
-        (total, player) => total + calculatePlayerPoints(player),
-        0
-      );
-    },
-    [userTeam, calculatePlayerPoints]
-  );
-
   useEffect(() => {
     const fetchUserTeam = async (): Promise<Player[]> => {
       try {
@@ -90,17 +78,22 @@ export default function TeamPage() {
         }
 
         const data = await response.json();
-        setUserTeam(data.team || []);
+        const teamData = data.team || [];
+        setUserTeam(teamData);
 
         // Calculate team points if team is complete
-        if (data.team && data.team.length === 11) {
-          const points = calculateTeamPoints(data.team);
+        if (teamData.length === 11) {
+          const points = teamData.reduce(
+            (total: number, player: Player) =>
+              total + calculatePlayerPoints(player),
+            0
+          );
           setTeamPoints(points);
         } else {
           setTeamPoints(null);
         }
 
-        return data.team || [];
+        return teamData;
       } catch (error: unknown) {
         console.error("Error fetching team:", error);
         toast.error("Failed to load your team");
@@ -111,11 +104,7 @@ export default function TeamPage() {
     };
 
     fetchUserTeam();
-  }, [calculateTeamPoints]);
-
-  useEffect(() => {
-    calculateTeamPoints(userTeam);
-  }, [userTeam, calculateTeamPoints]);
+  }, [calculatePlayerPoints]);
 
   const removePlayerFromTeam = async (playerId: string) => {
     try {
@@ -142,7 +131,13 @@ export default function TeamPage() {
       if (updatedTeam.length < 11) {
         setTeamPoints(null);
       } else {
-        setTeamPoints(calculateTeamPoints(updatedTeam));
+        // Calculate points for the whole team
+        const points = updatedTeam.reduce(
+          (total: number, player: Player) =>
+            total + calculatePlayerPoints(player),
+          0
+        );
+        setTeamPoints(points);
       }
 
       toast.success("Player removed from your team");

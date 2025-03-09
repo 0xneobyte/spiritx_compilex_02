@@ -475,7 +475,9 @@ export default function PlayersPage() {
                                   Player Value:
                                 </span>
                                 <p className="text-lg font-semibold">
-                                  {formatCurrency(selectedPlayer.value)}
+                                  {formatCurrency(
+                                    calculatePlayerValue(selectedPlayer)
+                                  )}
                                 </p>
                               </div>
                             </div>
