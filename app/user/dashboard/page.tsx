@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -18,7 +17,6 @@ import {
   TrendingUp,
   Trophy,
   CalendarDays,
-  ChevronsRight,
   ChevronRight,
   Lightbulb,
   Award,
@@ -44,14 +42,21 @@ interface Player {
   price: number;
 }
 
+interface LeaderboardEntry {
+  id: string;
+  username: string;
+  teamSize: number;
+  points: number;
+  isComplete: boolean;
+  isCurrentUser: boolean;
+}
+
 export default function UserDashboard() {
-  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [teamPlayers, setTeamPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalPoints, setTotalPoints] = useState(0);
   const [leaderboardRank, setLeaderboardRank] = useState<number | null>(null);
-  const [topPerformer, setTopPerformer] = useState<Player | null>(null);
 
   const fetchUser = async () => {
     try {
@@ -101,11 +106,6 @@ export default function UserDashboard() {
         data.teamPoints ||
         sortedPlayers.reduce((sum, player) => sum + (player.points || 0), 0);
       setTotalPoints(totalTeamPoints || 0);
-
-      // Set top performer
-      if (sortedPlayers.length > 0) {
-        setTopPerformer(sortedPlayers[0]);
-      }
     } catch (error) {
       console.error("Error fetching team:", error);
       // Set empty arrays and zeros as fallback
@@ -127,7 +127,7 @@ export default function UserDashboard() {
       if (userId && data.leaderboard && Array.isArray(data.leaderboard)) {
         // Find the current user's entry in the leaderboard
         const userEntry = data.leaderboard.find(
-          (entry: any) =>
+          (entry: LeaderboardEntry) =>
             entry.id === userId ||
             entry.id?.toString() === userId ||
             entry.username === user?.username
@@ -137,7 +137,7 @@ export default function UserDashboard() {
           // If user is found, get their index + 1 as rank
           const rank =
             data.leaderboard.findIndex(
-              (entry: any) =>
+              (entry: LeaderboardEntry) =>
                 entry.id === userId ||
                 entry.id?.toString() === userId ||
                 entry.username === user?.username
@@ -208,7 +208,7 @@ export default function UserDashboard() {
     "Balance your team with both batsmen and bowlers",
     "Invest in all-rounders for maximum points",
     "Track player performance and make strategic replacements",
-    "Don't spend your entire budget - save for future transfers",
+    "Don&apos;t spend your entire budget - save for future transfers",
   ];
 
   return (
@@ -444,9 +444,6 @@ export default function UserDashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-purple-600">
-                        {player.points} pts
-                      </p>
                       <p className="text-sm text-slate-500">
                         {player.category === "Batsman"
                           ? `${player.totalRuns} runs`
