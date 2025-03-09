@@ -116,8 +116,9 @@ const calculateStats = (playerData: PlayerData): PlayerData => {
 // Get a specific player
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     // Check if user is admin
     const auth = authenticateRequest(request, "admin");
@@ -130,7 +131,7 @@ export async function GET(
 
     await connectToDB();
 
-    const player = await Player.findById(params.id);
+    const player = await Player.findById(id);
 
     if (!player) {
       return NextResponse.json(
@@ -152,8 +153,9 @@ export async function GET(
 // Update a player
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     // Check if user is admin
     const auth = authenticateRequest(request, "admin");
@@ -167,7 +169,7 @@ export async function PUT(
     await connectToDB();
 
     let playerData = await request.json();
-    const player = await Player.findById(params.id);
+    const player = await Player.findById(id);
 
     if (!player) {
       return NextResponse.json(
@@ -207,8 +209,9 @@ export async function PUT(
 // Delete a player
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     // Check if user is admin
     const auth = authenticateRequest(request, "admin");
@@ -221,7 +224,7 @@ export async function DELETE(
 
     await connectToDB();
 
-    const player = await Player.findById(params.id);
+    const player = await Player.findById(id);
 
     if (!player) {
       return NextResponse.json(
@@ -230,7 +233,7 @@ export async function DELETE(
       );
     }
 
-    await Player.findByIdAndDelete(params.id);
+    await Player.findByIdAndDelete(id);
 
     return NextResponse.json(
       {
