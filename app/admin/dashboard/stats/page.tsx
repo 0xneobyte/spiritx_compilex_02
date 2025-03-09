@@ -473,6 +473,7 @@ export default function PlayerStats() {
   const stats = calcStatistics();
 
   // Also update the sortPlayers function if it exists
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const sortPlayers = (players: Player[], field: string, direction: string) => {
     // Always treat price sorting as value sorting
     const effectiveField = field === "price" ? "value" : field;

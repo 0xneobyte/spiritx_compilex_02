@@ -13,7 +13,6 @@ export default function SignupPage() {
     username: "",
     password: "",
     confirmPassword: "",
-    fullName: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -57,7 +56,6 @@ export default function SignupPage() {
         body: JSON.stringify({
           username: formData.username,
           password: formData.password,
-          fullName: formData.fullName,
         }),
       });
 
@@ -200,26 +198,6 @@ export default function SignupPage() {
                   autoComplete="new-password"
                   className="appearance-none block w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900"
                   placeholder="Confirm your password"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label
-                  htmlFor="fullName"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Full Name
-                </label>
-                <input
-                  id="fullName"
-                  type="text"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  required
-                  autoComplete="name"
-                  className="appearance-none block w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900"
-                  placeholder="Enter your full name"
                 />
               </div>
             </CardContent>
