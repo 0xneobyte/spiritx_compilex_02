@@ -3,7 +3,7 @@
 This project is part of a task for SpiritX 2025 organized by the University of Moratuwa.
 
 ## Project Overview
-
+<img width="1710" alt="image" src="https://github.com/user-attachments/assets/32c9886e-003e-4db5-ac43-a3d7027a5f9d" />
 Spirit11 is a fantasy cricket league platform where users build their dream teams from real university players. The application allows users to select players, manage their budget, view player statistics, and compete with others on the leaderboard. The platform includes an AI chatbot (Spiriter) that assists users with player queries and team recommendations.
 
 ## Features
