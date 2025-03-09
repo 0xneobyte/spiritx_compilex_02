@@ -49,7 +49,7 @@ const Navbar = React.forwardRef<HTMLDivElement, NavbarProps>(
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Link
-                href={isAdmin ? "/admin/dashboard" : "/"}
+                href={isAdmin ? "/admin/dashboard" : "/user/dashboard"}
                 className="flex items-center gap-2 group"
               >
                 <div className="flex items-center justify-center h-9 w-9 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-lg shadow-md shadow-purple-200 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-purple-300 group-hover:scale-105">

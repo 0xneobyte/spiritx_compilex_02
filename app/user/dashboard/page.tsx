@@ -66,95 +66,176 @@ export default function UserDashboard() {
       console.log("Starting data fetch sequence");
 
       // 1. First fetch user data
-      const userResponse = await fetch("/api/user/me");
-      if (!userResponse.ok) throw new Error("Failed to fetch user data");
-      const userData = await userResponse.json();
-      console.log("User data fetched:", userData);
+      try {
+        const userResponse = await fetch("/api/user/me");
+        if (!userResponse.ok)
+          throw new Error(`Failed to fetch user data: ${userResponse.status}`);
+        const userData = await userResponse.json();
+        console.log("User data fetched:", userData);
 
-      // Set user data
-      const currentUser = {
-        id: userData.id || "",
-        username: userData.username || "",
-        budget: userData.budget || 0,
-        role: userData.role || "user",
-      };
-      setUser(currentUser);
+        // Set user data
+        const currentUser = {
+          id: userData.id || "",
+          username: userData.username || "",
+          budget: userData.budget || 0,
+          role: userData.role || "user",
+        };
+        setUser(currentUser);
+      } catch (userError) {
+        console.error("Error fetching user data:", userError);
+        // Set fallback user data so we can continue
+        setUser({
+          id: "",
+          username: "Guest",
+          budget: 0,
+          role: "user",
+        });
+      }
 
       // 2. Then fetch team data
-      const teamResponse = await fetch("/api/user/team");
-      if (!teamResponse.ok) throw new Error("Failed to fetch team data");
-      const teamData = await teamResponse.json();
-      console.log("Team data fetched:", teamData);
+      try {
+        const teamResponse = await fetch("/api/user/team");
 
-      // Set team players
-      const players = teamData.team || [];
-      const sortedPlayers = [...players].sort(
-        (a, b) => (b.points || 0) - (a.points || 0)
-      );
-      setTeamPlayers(sortedPlayers);
+        // Log full response details for debugging
+        console.log("Team API response status:", teamResponse.status);
+        console.log("Team API response status text:", teamResponse.statusText);
 
-      // 3. Finally fetch leaderboard data - this is the source of truth for points
-      const leaderboardResponse = await fetch("/api/leaderboard");
-      if (!leaderboardResponse.ok)
-        throw new Error("Failed to fetch leaderboard");
-      const leaderboardData = await leaderboardResponse.json();
-      console.log("Leaderboard data fetched:", leaderboardData);
-
-      if (
-        leaderboardData.leaderboard &&
-        Array.isArray(leaderboardData.leaderboard)
-      ) {
-        // Find the current user in the leaderboard
-        const userEntry = leaderboardData.leaderboard.find(
-          (entry: LeaderboardEntry) =>
-            entry.id === currentUser.id ||
-            entry.id?.toString() === currentUser.id ||
-            entry.username === currentUser.username
-        );
-
-        if (userEntry) {
-          // Get rank
-          const rank =
-            leaderboardData.leaderboard.findIndex(
-              (entry: LeaderboardEntry) =>
-                entry.id === currentUser.id ||
-                entry.id?.toString() === currentUser.id ||
-                entry.username === currentUser.username
-            ) + 1;
-
-          // Set leaderboard data - THIS IS THE SOURCE OF TRUTH FOR POINTS
-          console.log("Setting points from leaderboard:", userEntry.points);
-          setLeaderboardRank(rank > 0 ? rank : null);
-          setTotalPoints(userEntry.points);
-        } else {
-          console.log(
-            "User not found in leaderboard, using team points calculation"
+        if (!teamResponse.ok) {
+          // Get more details about the error
+          let errorDetails = "";
+          try {
+            const errorData = await teamResponse.json();
+            errorDetails = JSON.stringify(errorData);
+          } catch {
+            errorDetails = "Could not parse error response";
+          }
+          throw new Error(
+            `Failed to fetch team data: ${teamResponse.status} - ${errorDetails}`
           );
-          setLeaderboardRank(null);
-
-          // Fallback to calculated points if not in leaderboard
-          const calculatedPoints =
-            teamData.teamPoints ||
-            sortedPlayers.reduce(
-              (sum: number, player: Player) => sum + (player.points || 0),
-              0
-            );
-          setTotalPoints(calculatedPoints || 0);
         }
-      } else {
-        // Fallback to calculated points if leaderboard data is invalid
-        console.log("Invalid leaderboard data, using team points calculation");
-        const calculatedPoints =
-          teamData.teamPoints ||
-          sortedPlayers.reduce(
+
+        const teamData = await teamResponse.json();
+        console.log("Team data fetched:", teamData);
+
+        // Set team players
+        const players = teamData.team || [];
+        const sortedPlayers = [...players].sort(
+          (a, b) => (b.points || 0) - (a.points || 0)
+        );
+        setTeamPlayers(sortedPlayers);
+
+        // Store team points from API or calculate locally if not provided
+        let calculatedPoints = teamData.teamPoints;
+        // If API doesn't provide teamPoints, calculate from player data
+        if (calculatedPoints === null || calculatedPoints === undefined) {
+          calculatedPoints = sortedPlayers.reduce(
             (sum: number, player: Player) => sum + (player.points || 0),
             0
           );
-        setTotalPoints(calculatedPoints || 0);
+          console.log("Calculated points locally:", calculatedPoints);
+        } else {
+          console.log("Using points from API:", calculatedPoints);
+        }
+
+        // 3. Finally fetch leaderboard data - this is the source of truth for points
+        try {
+          const leaderboardResponse = await fetch("/api/leaderboard");
+          if (!leaderboardResponse.ok)
+            throw new Error(
+              `Failed to fetch leaderboard: ${leaderboardResponse.status}`
+            );
+
+          const leaderboardData = await leaderboardResponse.json();
+          console.log("Leaderboard data fetched:", leaderboardData);
+
+          if (
+            leaderboardData.leaderboard &&
+            Array.isArray(leaderboardData.leaderboard)
+          ) {
+            const currentUser = user || { id: "", username: "" };
+            // Add debug logs to check user IDs
+            console.log("Current user to find:", {
+              id: currentUser.id,
+              username: currentUser.username,
+            });
+
+            // Log all leaderboard entries for debugging
+            leaderboardData.leaderboard.forEach(
+              (entry: LeaderboardEntry, index: number) => {
+                console.log(`Leaderboard entry ${index}:`, {
+                  id: entry.id,
+                  username: entry.username,
+                  isCurrentUser: entry.isCurrentUser,
+                });
+              }
+            );
+
+            // Prioritize the entry that has isCurrentUser flag set to true
+            const userEntry = leaderboardData.leaderboard.find(
+              (entry: LeaderboardEntry) => entry.isCurrentUser === true
+            );
+
+            if (!userEntry) {
+              // Fallback to ID/username matching if isCurrentUser not found
+              console.log(
+                "No entry with isCurrentUser=true, trying to match by ID/username"
+              );
+            }
+
+            if (userEntry) {
+              // Get rank
+              const rank =
+                leaderboardData.leaderboard.findIndex(
+                  (entry: LeaderboardEntry) => entry === userEntry
+                ) + 1;
+
+              // Set leaderboard data - THIS IS THE SOURCE OF TRUTH FOR POINTS
+              console.log("Setting points from leaderboard:", userEntry.points);
+              setLeaderboardRank(rank > 0 ? rank : null);
+              setTotalPoints(userEntry.points);
+            } else {
+              console.log(
+                "User not found in leaderboard, using team points calculation"
+              );
+              setLeaderboardRank(null);
+
+              // Use calculated points from team data
+              setTotalPoints(calculatedPoints || 0);
+            }
+          } else {
+            // Fallback to calculated points if leaderboard data is invalid
+            console.log(
+              "Invalid leaderboard data, using team points calculation"
+            );
+            setTotalPoints(calculatedPoints || 0);
+          }
+        } catch (leaderboardError) {
+          console.error("Error fetching leaderboard:", leaderboardError);
+          // Use calculated points from team data as fallback
+          setTotalPoints(calculatedPoints || 0);
+        }
+      } catch (teamError) {
+        console.error("Error fetching team data:", teamError);
+        // Set empty players array so UI can show "no players" state
+        setTeamPlayers([]);
       }
     } catch (error) {
-      console.error("Error fetching data:", error);
-      // Don't reset data on error to prevent flickering
+      console.error("Error in main data fetching flow:", error);
+      // Default values for graceful degradation
+      if (!user) {
+        setUser({
+          id: "",
+          username: "Guest",
+          budget: 0,
+          role: "user",
+        });
+      }
+      if (teamPlayers.length === 0) {
+        setTeamPlayers([]);
+      }
+      if (totalPoints === null) {
+        setTotalPoints(0);
+      }
     } finally {
       setLoading(false);
     }
@@ -175,8 +256,14 @@ export default function UserDashboard() {
 
   // Format points for display with proper decimal places
   const formatPoints = (points: number | null): string => {
-    if (points === null) return "...";
-    return points.toFixed(1);
+    if (points === null) return "0.0"; // Return 0.0 instead of "..." for null points
+
+    // Convert to number to ensure proper formatting
+    const numPoints = Number(points);
+    if (isNaN(numPoints)) return "0.0";
+
+    // Format with 1 decimal place
+    return numPoints.toFixed(1);
   };
 
   const tips = [
