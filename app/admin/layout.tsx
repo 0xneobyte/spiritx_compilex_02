@@ -20,17 +20,32 @@ export default function AdminLayout({
     const checkAdmin = async () => {
       try {
         setLoading(true);
+        console.log("Admin Layout: Checking if user is admin...");
         const response = await fetch("/api/user/me");
+        console.log(
+          "Admin Layout: User/me API response status:",
+          response.status
+        );
+
         if (!response.ok) {
+          console.log("Admin Layout: Not authenticated, redirecting to login");
           toast.error("Authentication required");
           router.push("/auth/login");
           return;
         }
 
         const data = await response.json();
+        console.log("Admin Layout: User data received:", {
+          username: data.username,
+          role: data.role,
+          isAdmin: data.role === "admin",
+        });
 
         // Check if the user is an admin
         if (data.role !== "admin") {
+          console.log(
+            "Admin Layout: User is not admin, redirecting to user page"
+          );
           toast.error("Admin access required");
           router.push("/user/players");
           return;

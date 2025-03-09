@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
-  const token = request.cookies.get("spirit11_token")?.value;
+  const token = request.cookies.get("spiritx_token")?.value;
+  console.log("Middleware: Checking auth token", {
+    tokenExists: !!token,
+    pathname: request.nextUrl.pathname,
+  });
   const { pathname } = request.nextUrl;
 
   // Public routes that don't require authentication
@@ -39,7 +43,14 @@ export function middleware(request: NextRequest) {
         Buffer.from(token.split(".")[1], "base64").toString()
       );
 
+      console.log("Middleware: Admin route check", {
+        username: payload.username,
+        role: payload.role,
+        isAdmin: payload.role === "admin",
+      });
+
       if (payload.role !== "admin") {
+        console.log("Middleware: Redirecting non-admin from admin route");
         // If not admin, redirect to user dashboard
         const url = new URL("/user/players", request.url);
         return NextResponse.redirect(url);

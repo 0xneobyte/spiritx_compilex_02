@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDB } from "@/app/lib/utils/database";
 import User from "@/app/lib/models/user";
-import Player from "@/app/lib/models/player";
 import { authenticateRequest } from "@/app/lib/utils/auth";
 
 export async function GET(req: NextRequest) {
@@ -28,8 +27,18 @@ export async function GET(req: NextRequest) {
     // Calculate team points if team is complete (has 11 players)
     let teamPoints = 0;
     if (user.team.length === 11) {
-      // Calculate total team points by summing individual player points
-      teamPoints = user.team.reduce((sum, player) => sum + player.points, 0);
+      // We need to populate the team with player details to get points
+      const populatedUser = await User.findById(user._id).populate("team");
+
+      if (populatedUser && populatedUser.team) {
+        // Calculate total team points by summing individual player points
+        teamPoints = 0;
+        for (const player of populatedUser.team) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const playerAny = player as any;
+          teamPoints += playerAny.points || 0;
+        }
+      }
     }
 
     return NextResponse.json(

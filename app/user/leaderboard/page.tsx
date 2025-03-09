@@ -21,7 +21,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 
-interface LeaderboardUser {
+interface LeaderboardEntry {
   id: string;
   username: string;
   teamSize: number;
@@ -34,7 +34,7 @@ export default function LeaderboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [currentUserRank, setCurrentUserRank] = useState<number | null>(null);
 
   useEffect(() => {
@@ -52,13 +52,13 @@ export default function LeaderboardPage() {
 
         // Find current user's rank
         const currentUserIndex = data.leaderboard.findIndex(
-          (user: LeaderboardUser) => user.isCurrentUser
+          (user: LeaderboardEntry) => user.isCurrentUser
         );
         if (currentUserIndex !== -1) {
           setCurrentUserRank(currentUserIndex + 1);
         }
-      } catch (err: any) {
-        setError(err.message || "An error occurred");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
         setLoading(false);
       }

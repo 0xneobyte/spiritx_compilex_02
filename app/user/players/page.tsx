@@ -10,14 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
 import {
   Dialog,
   DialogContent,
@@ -26,7 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -49,6 +42,8 @@ interface Player {
   bowlingStrikeRate: number;
   economyRate: number;
   value: number;
+  price: number;
+  [key: string]: unknown; // For any other properties
 }
 
 export default function PlayersPage() {
@@ -73,8 +68,8 @@ export default function PlayersPage() {
 
         const data = await response.json();
         setPlayers(data.players);
-      } catch (err: any) {
-        setError(err.message || "An error occurred");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
         setLoading(false);
       }
@@ -192,8 +187,6 @@ export default function PlayersPage() {
 
   // Calculate player value on the fly
   const calculatePlayerValue = (player: Player) => {
-    if (player.value > 0) return player.value;
-
     const points = calculatePlayerPoints(player);
 
     // Calculate value using the same formula as the model

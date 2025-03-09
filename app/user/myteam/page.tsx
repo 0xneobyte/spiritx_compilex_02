@@ -1,14 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -36,13 +30,58 @@ interface Player {
 export default function TeamPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [userTeam, setUserTeam] = useState<Player[]>([]);
-  const [budget, setBudget] = useState(0);
   const [teamPoints, setTeamPoints] = useState<number | null>(null);
 
+  // Calculate player points
+  const calculatePlayerPoints = useCallback((player: Player) => {
+    let points = 0;
+    const battingStrikeRate =
+      player.battingStrikeRate > 0
+        ? player.battingStrikeRate
+        : calculateBattingStrikeRate(player);
+    const battingAverage =
+      player.battingAverage > 0
+        ? player.battingAverage
+        : calculateBattingAverage(player);
+    const bowlingStrikeRate =
+      player.bowlingStrikeRate > 0
+        ? player.bowlingStrikeRate
+        : calculateBowlingStrikeRate(player);
+    const economyRate =
+      player.economyRate > 0
+        ? player.economyRate
+        : calculateEconomyRate(player);
+
+    if (battingStrikeRate > 0) {
+      points += battingStrikeRate / 5 + battingAverage * 0.8;
+    }
+
+    if (bowlingStrikeRate > 0 && bowlingStrikeRate < 999) {
+      points += 500 / bowlingStrikeRate;
+    }
+
+    if (economyRate > 0) {
+      points += 140 / economyRate;
+    }
+
+    return points;
+  }, []);
+
+  // Calculate team points wrapped in useCallback
+  const calculateTeamPoints = useCallback(
+    (team = userTeam) => {
+      if (team.length !== 11) return null;
+      return team.reduce(
+        (total, player) => total + calculatePlayerPoints(player),
+        0
+      );
+    },
+    [userTeam, calculatePlayerPoints]
+  );
+
   useEffect(() => {
-    const fetchUserTeam = async () => {
+    const fetchUserTeam = async (): Promise<Player[]> => {
       try {
         setLoading(true);
         const response = await fetch("/api/user/team");
@@ -52,7 +91,6 @@ export default function TeamPage() {
 
         const data = await response.json();
         setUserTeam(data.team || []);
-        setBudget(data.budget || 0);
 
         // Calculate team points if team is complete
         if (data.team && data.team.length === 11) {
@@ -61,15 +99,23 @@ export default function TeamPage() {
         } else {
           setTeamPoints(null);
         }
-      } catch (err: any) {
-        setError(err.message || "Failed to load your team");
+
+        return data.team || [];
+      } catch (error: unknown) {
+        console.error("Error fetching team:", error);
+        toast.error("Failed to load your team");
+        return [];
       } finally {
         setLoading(false);
       }
     };
 
     fetchUserTeam();
-  }, []);
+  }, [calculateTeamPoints]);
+
+  useEffect(() => {
+    calculateTeamPoints(userTeam);
+  }, [userTeam, calculateTeamPoints]);
 
   const removePlayerFromTeam = async (playerId: string) => {
     try {
@@ -91,7 +137,6 @@ export default function TeamPage() {
       // Update local state
       const updatedTeam = userTeam.filter((p) => p._id !== playerId);
       setUserTeam(updatedTeam);
-      setBudget((prevBudget) => prevBudget + playerValue);
 
       // Update team points
       if (updatedTeam.length < 11) {
@@ -101,8 +146,10 @@ export default function TeamPage() {
       }
 
       toast.success("Player removed from your team");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to remove player");
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to remove player"
+      );
     }
   };
 
@@ -165,63 +212,10 @@ export default function TeamPage() {
     return player.runsConceded / player.oversBowled;
   };
 
-  // Calculate player points
-  const calculatePlayerPoints = (player: Player) => {
-    let points = 0;
-    const battingStrikeRate =
-      player.battingStrikeRate > 0
-        ? player.battingStrikeRate
-        : calculateBattingStrikeRate(player);
-    const battingAverage =
-      player.battingAverage > 0
-        ? player.battingAverage
-        : calculateBattingAverage(player);
-    const bowlingStrikeRate =
-      player.bowlingStrikeRate > 0
-        ? player.bowlingStrikeRate
-        : calculateBowlingStrikeRate(player);
-    const economyRate =
-      player.economyRate > 0
-        ? player.economyRate
-        : calculateEconomyRate(player);
-
-    if (battingStrikeRate > 0) {
-      points += battingStrikeRate / 5 + battingAverage * 0.8;
-    }
-
-    if (bowlingStrikeRate > 0 && bowlingStrikeRate < 999) {
-      points += 500 / bowlingStrikeRate;
-    }
-
-    if (economyRate > 0) {
-      points += 140 / economyRate;
-    }
-
-    return points;
-  };
-
-  // Calculate team points
-  const calculateTeamPoints = (team = userTeam) => {
-    if (team.length !== 11) return null;
-    return team.reduce(
-      (total, player) => total + calculatePlayerPoints(player),
-      0
-    );
-  };
-
-  if (error) {
+  if (loading) {
     return (
-      <div className="p-4">
-        <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-          <h3 className="text-lg font-medium text-red-800">Error</h3>
-          <p className="text-red-700">{error}</p>
-          <button
-            className="mt-2 px-3 py-1 bg-red-700 text-white rounded-md"
-            onClick={() => router.refresh()}
-          >
-            Try Again
-          </button>
-        </div>
+      <div className="text-center py-4">
+        <p>Loading your team...</p>
       </div>
     );
   }
@@ -248,18 +242,17 @@ export default function TeamPage() {
         )}
       </div>
 
-      {loading ? (
-        <div className="text-center py-4">
-          <p>Loading your team...</p>
-        </div>
-      ) : userTeam.length === 0 ? (
+      {userTeam.length === 0 ? (
         <div className="text-center py-6 bg-gray-50 rounded-lg border">
           <p className="text-gray-500 mb-3">
-            You haven't selected any players yet.
+            You don&apos;t have any players in your team yet.
           </p>
-          <Button onClick={() => router.push("/user/team")}>
+          <button
+            onClick={() => router.push("/user/team")}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
             Go to Select Players
-          </Button>
+          </button>
         </div>
       ) : (
         <div className="bg-white border rounded-lg overflow-hidden">
@@ -314,8 +307,8 @@ export default function TeamPage() {
             <div className="p-3 bg-amber-50 border-t border-amber-200">
               <p className="text-center text-amber-700 text-sm">
                 Add {11 - userTeam.length} more player
-                {11 - userTeam.length !== 1 ? "s" : ""} to see your team's total
-                points.
+                {11 - userTeam.length !== 1 ? "s" : ""} to see your team&apos;s
+                total points.
                 <Button
                   variant="link"
                   className="text-amber-700 font-medium p-0 h-auto ml-1"

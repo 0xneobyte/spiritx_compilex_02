@@ -23,14 +23,12 @@ const UserSchema = new Schema<IUser>(
 
 // Hash password before saving
 UserSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-
   try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
+    if (!this.isModified("password")) return next();
+    this.password = await bcrypt.hash(this.password, 10);
     next();
-  } catch (error: any) {
-    next(error);
+  } catch (error: unknown) {
+    next(error instanceof Error ? error : new Error(String(error)));
   }
 });
 
@@ -39,6 +37,48 @@ UserSchema.methods.comparePassword = async function (
   candidatePassword: string
 ): Promise<boolean> {
   return bcrypt.compare(candidatePassword, this.password);
+};
+
+// Static method to find user by username
+UserSchema.statics.findByUsername = async function (username: string) {
+  return this.findOne({ username });
+};
+
+// Define a user type for the return type
+interface UserDocument extends mongoose.Document {
+  username: string;
+  password: string;
+  budget: number;
+  team: mongoose.Types.ObjectId[];
+  role?: string;
+  [key: string]: unknown;
+}
+
+// Static method to authenticate user
+UserSchema.statics.authenticate = async function (
+  username: string,
+  password: string
+): Promise<{ user: UserDocument | null; error: string | null }> {
+  try {
+    const user = await this.findOne({ username });
+
+    if (!user) {
+      return { user: null, error: "User not found" };
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return { user: null, error: "Invalid password" };
+    }
+
+    return { user, error: null };
+  } catch (error: unknown) {
+    return {
+      user: null,
+      error: error instanceof Error ? error.message : "Authentication error",
+    };
+  }
 };
 
 // Delete the model if it exists to avoid overwrite warnings

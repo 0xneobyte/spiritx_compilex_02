@@ -18,6 +18,16 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if it's admin login
+    console.log("Admin credentials check:", {
+      providedUsername: username,
+      providedPassword: password,
+      expectedUsername: process.env.ADMIN_USERNAME,
+      expectedPasswordLength: process.env.ADMIN_PASSWORD?.length,
+      match:
+        username === process.env.ADMIN_USERNAME &&
+        password === process.env.ADMIN_PASSWORD,
+    });
+
     if (
       username === process.env.ADMIN_USERNAME &&
       password === process.env.ADMIN_PASSWORD
@@ -28,9 +38,8 @@ export async function POST(req: NextRequest) {
         role: "admin",
       });
 
-      await setTokenCookie(token);
-
-      return NextResponse.json(
+      // Create response for admin
+      const response = NextResponse.json(
         {
           message: "Admin logged in successfully",
           user: {
@@ -41,6 +50,9 @@ export async function POST(req: NextRequest) {
         },
         { status: 200 }
       );
+
+      // Set token in cookie and return the response
+      return setTokenCookie(token, response);
     }
 
     // Find user
@@ -63,25 +75,27 @@ export async function POST(req: NextRequest) {
 
     // Generate token
     const token = generateToken({
-      id: user._id.toString(),
-      username: user.username,
+      id: user._id?.toString() || "",
+      username: user.username as string,
       role: "user",
     });
 
-    // Set token in cookie
-    await setTokenCookie(token);
-
-    return NextResponse.json(
+    // Create response
+    const response = NextResponse.json(
       {
         message: "User logged in successfully",
         user: {
           id: user._id,
           username: user.username,
           budget: user.budget,
+          role: "user",
         },
       },
       { status: 200 }
     );
+
+    // Set token in cookie
+    return setTokenCookie(token, response);
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json(

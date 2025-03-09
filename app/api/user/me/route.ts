@@ -7,6 +7,13 @@ export async function GET(req: NextRequest) {
   try {
     // Check if user is authenticated
     const auth = authenticateRequest(req);
+    console.log("Me API: Auth check result:", {
+      authenticated: auth.authenticated,
+      userId: auth.user?.id,
+      username: auth.user?.username,
+      role: auth.user?.role,
+    });
+
     if (!auth.authenticated || !auth.user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
@@ -15,6 +22,7 @@ export async function GET(req: NextRequest) {
 
     // Handle admin user
     if (auth.user.id === "admin") {
+      console.log("Me API: Admin user detected, returning admin role");
       return NextResponse.json(
         {
           id: "admin",

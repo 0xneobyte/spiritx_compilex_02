@@ -4,6 +4,7 @@ import { parse } from "csv-parse/sync";
 import { connectToDB } from "./database";
 import Player from "../models/player";
 import User from "../models/user";
+import bcrypt from "bcryptjs";
 
 interface PlayerCSVData {
   Name: string;
@@ -73,7 +74,8 @@ export const importPlayersFromCSV = async () => {
     }));
 
     // Save all players to database
-    const result = await Player.insertMany(players);
+    const insertResult = await Player.insertMany(players);
+    console.log(`Inserted ${insertResult.length} players into database`);
 
     return {
       success: true,
@@ -95,114 +97,72 @@ export const importPlayersFromCSV = async () => {
   }
 };
 
-// Create the predefined user with the specific team
-export const createPredefinedUser = async () => {
+export async function createPredefinedUser() {
   try {
-    await connectToDB();
-
-    // Check if predefined user already exists
+    // Check if the user already exists
     const existingUser = await User.findOne({ username: "spiritx_2025" });
+
     if (existingUser) {
-      // Log details about the existing user for debugging
-      console.log("Predefined user already exists with details:");
-      console.log(`- Username: ${existingUser.username}`);
-      console.log(`- Budget: ${existingUser.budget}`);
-      console.log(`- Team size: ${existingUser.team.length}`);
-      
+      console.log("Predefined user already exists, skipping creation");
       return {
         success: true,
-        message: "Predefined user already exists, skipping...",
-        userCreated: false,
-        teamSize: existingUser.team.length,
-        budget: existingUser.budget
+        message: "Predefined user already exists",
+        user: existingUser,
       };
     }
 
-    // Find the required players for the predefined team
-    const requiredPlayers = [
-      "Danushka Kumara",
-      "Jeewan Thirimanne",
-      "Charith Shanaka",
-      "Pathum Dhananjaya",
-      "Suranga Bandara",
-      "Sammu Sandakan",
-      "Minod Rathnayake",
-      "Lakshan Gunathilaka",
-      "Sadeera Rajapaksa",
-      "Danushka Jayawickrama",
-      "Lakshan Vandersay",
-    ];
+    // Create a randomly selected team of players
+    // Get all players
+    const allPlayers = await Player.find({});
 
-    // Log all players in DB to help diagnosis
-    const allPlayers = await Player.find({}, "name");
-    console.log(`Total players in database: ${allPlayers.length}`);
-    console.log(
-      "Player names available:",
-      allPlayers.map((p) => p.name)
-    );
-
-    const players = await Player.find({ name: { $in: requiredPlayers } });
-    console.log(
-      `Found ${players.length}/${requiredPlayers.length} required players`
-    );
-
-    if (players.length !== requiredPlayers.length) {
-      const missingPlayers = requiredPlayers.filter(
-        (name) => !players.some((player) => player.name === name)
-      );
+    if (allPlayers.length < 11) {
+      console.error("Not enough players to create a team");
       return {
         success: false,
-        message: `Could not find all required players for the predefined team. Missing: ${missingPlayers.join(
-          ", "
-        )}`,
-        userCreated: false,
-        teamSize: 0,
-        missingPlayers,
+        message: "Not enough players to create a team",
       };
     }
 
-    // Create the predefined user
-    const totalPlayerValue = players.reduce((total, player) => {
-      console.log(`Player: ${player.name}, Value: ${player.value}`);
-      return (
-        total +
-        (typeof player.value === "number" && player.value > 0
-          ? player.value
-          : 0)
-      );
-    }, 0);
+    // Randomly select 11 players
+    const shuffled = allPlayers.sort(() => 0.5 - Math.random());
+    const selectedPlayers = shuffled.slice(0, 11);
 
-    console.log(`Total player value: ${totalPlayerValue}`);
+    // Calculate total value
+    const totalValue = selectedPlayers.reduce(
+      (sum, player) => sum + (player.value || 100000),
+      0
+    );
 
-    const user = new User({
+    // Create the user with password "cricket2025"
+    const hashedPassword = await bcrypt.hash("cricket2025", 10);
+
+    const newUser = new User({
       username: "spiritx_2025",
-      password: "SpiritX@2025",
-      team: players.map((player) => player._id),
-      // Set budget to fixed 9,000,000 for now to ensure correct value
-      budget: 9000000,
+      password: hashedPassword,
+      fullName: "SpiritX Admin",
+      role: "user",
+      team: selectedPlayers.map((p) => p._id),
+      budget: 10000000 - totalValue,
+      createdAt: new Date(),
     });
 
-    await user.save();
+    await newUser.save();
+
+    console.log(
+      `Created predefined user with ${selectedPlayers.length} players and ${newUser.budget} budget`
+    );
 
     return {
       success: true,
-      message: "Successfully created predefined user with team",
-      userCreated: true,
-      teamSize: players.length,
-      playerValues: players.map((p) => ({ name: p.name, value: p.value })),
-      totalPlayerValue,
-      finalBudget: user.budget,
+      message: "Predefined user created successfully",
+      user: newUser,
     };
   } catch (error) {
     console.error("Error creating predefined user:", error);
     return {
       success: false,
-      message: `Error creating predefined user: ${
-        error instanceof Error ? error.message : "Unknown error"
-      }`,
-      error: error,
-      userCreated: false,
-      teamSize: 0,
+      message: "Error creating predefined user",
+      error: error instanceof Error ? error.message : String(error),
     };
   }
-};
+}

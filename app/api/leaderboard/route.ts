@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDB } from "@/app/lib/utils/database";
 import User from "@/app/lib/models/user";
-import Player from "@/app/lib/models/player";
 import { authenticateRequest } from "@/app/lib/utils/auth";
+
+interface PlayerData {
+  points?: number;
+  battingStrikeRate?: number;
+  battingAverage?: number;
+  bowlingStrikeRate?: number;
+  economyRate?: number;
+  ballsFaced?: number;
+  totalRuns?: number;
+  inningsPlayed?: number;
+  wickets?: number;
+  oversBowled?: number;
+  runsConceded?: number;
+  [key: string]: string | number | boolean | undefined; // More specific type for index signature
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -24,35 +38,47 @@ export async function GET(req: NextRequest) {
       .select("username team");
 
     // Function to calculate player points properly
-    const calculatePlayerPoints = (player: any) => {
-      if (player.points > 0) return player.points;
+    const calculatePlayerPoints = (player: PlayerData) => {
+      if (player.points !== undefined && player.points > 0)
+        return player.points;
 
       // Calculate stats
       const battingStrikeRate =
-        player.battingStrikeRate > 0
+        player.battingStrikeRate !== undefined && player.battingStrikeRate > 0
           ? player.battingStrikeRate
-          : player.ballsFaced > 0
+          : player.ballsFaced !== undefined &&
+            player.ballsFaced > 0 &&
+            player.totalRuns !== undefined
           ? (player.totalRuns / player.ballsFaced) * 100
           : 0;
 
       const battingAverage =
-        player.battingAverage > 0
+        player.battingAverage !== undefined && player.battingAverage > 0
           ? player.battingAverage
-          : player.inningsPlayed > 0
+          : player.inningsPlayed !== undefined &&
+            player.inningsPlayed > 0 &&
+            player.totalRuns !== undefined
           ? player.totalRuns / player.inningsPlayed
           : 0;
 
       const bowlingStrikeRate =
+        player.bowlingStrikeRate !== undefined &&
+        player.bowlingStrikeRate !== null &&
         player.bowlingStrikeRate > 0
           ? player.bowlingStrikeRate
-          : player.wickets > 0 && player.oversBowled > 0
+          : player.wickets !== undefined &&
+            player.wickets > 0 &&
+            player.oversBowled !== undefined &&
+            player.oversBowled > 0
           ? Math.floor(player.oversBowled * 6) / player.wickets
           : 0;
 
       const economyRate =
-        player.economyRate > 0
+        player.economyRate !== undefined && player.economyRate > 0
           ? player.economyRate
-          : player.oversBowled > 0 && player.runsConceded !== undefined
+          : player.oversBowled !== undefined &&
+            player.oversBowled > 0 &&
+            player.runsConceded !== undefined
           ? player.runsConceded / player.oversBowled
           : 0;
 
@@ -79,7 +105,8 @@ export async function GET(req: NextRequest) {
         if (user.team.length === 11) {
           // Calculate points for each player and sum them up
           points = user.team.reduce(
-            (total, player) => total + calculatePlayerPoints(player),
+            (total, player) =>
+              total + calculatePlayerPoints(player as unknown as PlayerData),
             0
           );
         }
@@ -90,7 +117,7 @@ export async function GET(req: NextRequest) {
           teamSize: user.team.length,
           points: points,
           isComplete: user.team.length === 11,
-          isCurrentUser: user._id.toString() === auth.user.id,
+          isCurrentUser: user._id?.toString() === auth.user?.id,
         };
       })
     );

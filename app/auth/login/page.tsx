@@ -23,8 +23,8 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
+    setError("");
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -32,7 +32,10 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password,
+        }),
       });
 
       const data = await response.json();
@@ -41,14 +44,24 @@ export default function LoginPage() {
         throw new Error(data.message || "Login failed");
       }
 
-      // Check if user is admin
-      if (data.user.role === "admin") {
-        router.push("/admin/dashboard");
-      } else {
-        router.push("/user/players");
+      if (data.user) {
+        console.log("Login response data:", {
+          user: data.user,
+          role: data.user.role,
+          isAdminRole: data.user.role === "admin",
+        });
+
+        if (data.user.role === "admin") {
+          console.log("Redirecting to admin dashboard");
+          router.push("/admin/dashboard");
+        } else {
+          console.log("Redirecting to user team page");
+          router.push("/user/myteam");
+        }
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred during login");
+    } catch (error: unknown) {
+      console.error("Login error:", error);
+      setError(error instanceof Error ? error.message : "Login failed");
     } finally {
       setLoading(false);
     }
@@ -138,13 +151,15 @@ export default function LoginPage() {
 
             <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-2 pb-6">
               <div className="text-sm w-full sm:w-auto">
-                <span className="text-gray-600">Don't have an account? </span>
-                <Link
-                  href="/auth/signup"
-                  className="text-purple-600 hover:text-purple-500 font-medium"
-                >
-                  Sign up
-                </Link>
+                <p className="text-sm text-muted-foreground">
+                  Don&apos;t have an account?{" "}
+                  <Link
+                    href="/auth/signup"
+                    className="text-primary hover:underline"
+                  >
+                    Sign up
+                  </Link>
+                </p>
               </div>
 
               <Button

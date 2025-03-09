@@ -3,11 +3,23 @@ import mongoose from "mongoose";
 const MONGODB_URI =
   process.env.MONGODB_URI || "mongodb://localhost:27017/spirit11";
 
-// Global variable to maintain connection status across serverless function invocations
-let cached = global.mongoose;
+// Define the type for the cached mongoose connection
+interface MongooseCache {
+  conn: typeof mongoose | null;
+  promise: Promise<typeof mongoose> | null;
+}
 
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
+// Add mongoose property to NodeJS.Global interface
+declare global {
+  // eslint-disable-next-line no-var
+  var mongoose: MongooseCache | undefined;
+}
+
+// Global variable to maintain connection status across serverless function invocations
+const cached: MongooseCache = global.mongoose || { conn: null, promise: null };
+
+if (!global.mongoose) {
+  global.mongoose = { conn: null, promise: null };
 }
 
 export const connectToDB = async () => {

@@ -5,9 +5,28 @@
  * Calculates the value of a player based on their statistics
  * This function is for server-side use with Mongoose models
  */
-export const calculatePlayerValueServer = (player: any): number => {
+
+// Define a proper type for Player
+export interface PlayerData {
+  name?: string;
+  battingStrikeRate?: number;
+  battingAverage?: number;
+  bowlingStrikeRate?: number | null;
+  economyRate?: number;
+  points?: number;
+  ballsFaced?: number;
+  totalRuns?: number;
+  inningsPlayed?: number;
+  wickets?: number;
+  oversBowled?: number;
+  runsConceded?: number;
+  value?: number;
+  [key: string]: string | number | boolean | null | undefined; // More specific type for index signature
+}
+
+export const calculatePlayerValueServer = (player: PlayerData): number => {
   // If player already has a value, use it
-  if (player.value > 0) return player.value;
+  if (player.value !== undefined && player.value > 0) return player.value;
 
   // Predefined values for special players
   const predefinedValues: Record<string, number> = {
@@ -25,7 +44,7 @@ export const calculatePlayerValueServer = (player: any): number => {
   };
 
   // For predefined players, return the fixed value
-  if (predefinedValues[player.name]) {
+  if (player.name && predefinedValues[player.name]) {
     return predefinedValues[player.name];
   }
 
@@ -101,4 +120,10 @@ export const calculatePlayerValueServer = (player: any): number => {
 
   // Calculate value using the original formula from the team selection page
   return Math.round(((9 * points + 100) * 1000) / 50000) * 50000;
+};
+
+export const calculatePlayersValue = (players: PlayerData[]) => {
+  return players.map(() => {
+    // ... existing code ...
+  });
 };

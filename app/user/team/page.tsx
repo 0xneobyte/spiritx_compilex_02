@@ -2,19 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { formatCurrency } from "@/app/lib/utils";
@@ -36,20 +25,20 @@ interface Player {
   bowlingStrikeRate: number;
   economyRate: number;
   value: number;
+  [key: string]: string | number | boolean | undefined;
 }
 
 export default function TeamPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [userTeam, setUserTeam] = useState<Player[]>([]);
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
   const [budget, setBudget] = useState(0);
-  const [teamPoints, setTeamPoints] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchUserTeam = async () => {
+    const fetchUserTeam = async (): Promise<Player[]> => {
       try {
         const response = await fetch("/api/user/team");
         if (!response.ok) {
@@ -59,17 +48,24 @@ export default function TeamPage() {
         const data = await response.json();
         setUserTeam(data.team || []);
         setBudget(data.budget || 0);
-        setTeamPoints(data.teamPoints);
-      } catch (err: any) {
-        setError(err.message || "Failed to load your team");
+        return data.team || [];
+      } catch (err) {
+        console.error("Error fetching team:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch your team"
+        );
+        toast.error("Failed to load your team");
+        return [];
       }
     };
 
-    fetchUserTeam();
+    fetchUserTeam().then((team) => {
+      setUserTeam(team);
+    });
   }, []);
 
   useEffect(() => {
-    const fetchPlayers = async () => {
+    const fetchPlayers = async (): Promise<Player[]> => {
       try {
         setLoading(true);
         const categoryParam =
@@ -82,17 +78,22 @@ export default function TeamPage() {
 
         const data = await response.json();
         setAllPlayers(data.players);
-      } catch (err: any) {
-        setError(err.message || "An error occurred");
+        return data.players;
+      } catch (error: unknown) {
+        console.error("Error fetching players:", error);
+        toast.error("Failed to load players");
+        return [];
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPlayers();
+    fetchPlayers().then((players) => {
+      setAllPlayers(players);
+    });
   }, [selectedCategory]);
 
-  const addPlayerToTeam = async (playerId: string) => {
+  const addPlayerToTeam = async (playerId: string): Promise<void> => {
     try {
       // Find the player to get their value
       const playerToAdd = allPlayers.find((p) => p._id === playerId);
@@ -120,12 +121,15 @@ export default function TeamPage() {
       setBudget((prevBudget) => prevBudget - playerValue);
 
       toast.success("Player added to your team");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to add player");
+    } catch (error: unknown) {
+      console.error("Error adding player:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add player"
+      );
     }
   };
 
-  const removePlayerFromTeam = async (playerId: string) => {
+  const removePlayerFromTeam = async (playerId: string): Promise<void> => {
     try {
       // Find the player to get their value
       const playerToRemove = userTeam.find((p) => p._id === playerId);
@@ -148,8 +152,11 @@ export default function TeamPage() {
       setBudget((prevBudget) => prevBudget + playerValue);
 
       toast.success("Player removed from your team");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to remove player");
+    } catch (error: unknown) {
+      console.error("Error removing player:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to remove player"
+      );
     }
   };
 

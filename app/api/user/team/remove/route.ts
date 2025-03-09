@@ -3,8 +3,11 @@ import { connectToDB } from "@/app/lib/utils/database";
 import User from "@/app/lib/models/user";
 import Player from "@/app/lib/models/player";
 import { authenticateRequest } from "@/app/lib/utils/auth";
-import { sendUpdateToUser } from "../../../updates/route";
-import { calculatePlayerValueServer } from "@/app/lib/utils/playerValueServer";
+import { sendUpdateToUser } from "@/app/lib/utils/updates";
+import {
+  calculatePlayerValueServer,
+  PlayerData,
+} from "@/app/lib/utils/playerValueServer";
 
 export async function POST(req: NextRequest) {
   try {
@@ -52,11 +55,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Use our shared utility to calculate player value consistently
+    // Calculate value to refund
     const valueToRefund =
       playerValue !== undefined
         ? playerValue
-        : calculatePlayerValueServer(player);
+        : calculatePlayerValueServer(
+            player.toObject() as unknown as PlayerData
+          );
 
     // Remove player from team and refund budget
     user.team.splice(playerIndex, 1);

@@ -6,14 +6,13 @@ import { toast } from "sonner";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -52,7 +51,7 @@ interface Player {
   economyRate: number;
   oversBowled: number;
   runsConceded: number;
-  bowlingStrikeRate: number;
+  bowlingStrikeRate: number | null;
   points: number;
   value: number;
   price: number;
@@ -100,7 +99,7 @@ export default function PlayersManagement() {
   };
 
   // Add a function to calculate cricket statistics
-  const calculateStats = (player: any) => {
+  const calculateStats = (player: Player) => {
     const calculatedPlayer = { ...player };
 
     // Calculate Batting Strike Rate: (Total Runs / Balls Faced) × 100
@@ -148,6 +147,7 @@ export default function PlayersManagement() {
     if (
       player.wickets &&
       player.wickets > 0 &&
+      calculatedPlayer.bowlingStrikeRate !== null &&
       calculatedPlayer.bowlingStrikeRate > 0
     ) {
       bowlingPoints += 500 / calculatedPlayer.bowlingStrikeRate;
@@ -188,7 +188,7 @@ export default function PlayersManagement() {
         const data = await response.json();
 
         // Ensure all players have required properties and calculate derived statistics
-        const cleanedPlayers = data.players.map((player: any) => {
+        const cleanedPlayers = data.players.map((player: Player) => {
           const basePlayer = {
             ...player,
             battingStrikeRate: player.battingStrikeRate || 0,
@@ -289,7 +289,7 @@ export default function PlayersManagement() {
       }
 
       // Calculate derived statistics
-      const playerWithStats = calculateStats(newPlayer);
+      const playerWithStats = calculateStats(newPlayer as Player);
 
       const response = await fetch("/api/admin/players", {
         method: "POST",
@@ -328,9 +328,11 @@ export default function PlayersManagement() {
         value: 0,
         price: 100000,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding player:", error);
-      toast.error(error.message || "Failed to add player");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add player"
+      );
     }
   };
 
@@ -377,10 +379,12 @@ export default function PlayersManagement() {
         players.map((p) => (p._id === selectedPlayer._id ? data.player : p))
       );
       setIsEditDialogOpen(false);
-      toast.success("Player updated successfully");
-    } catch (error: any) {
+      toast.success("Player's stats updated successfully!");
+    } catch (error: unknown) {
       console.error("Error updating player:", error);
-      toast.error(error.message || "Failed to update player");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update player"
+      );
     }
   };
 
@@ -399,9 +403,11 @@ export default function PlayersManagement() {
       // Update players list
       setPlayers(players.filter((p) => p._id !== id));
       toast.success("Player deleted successfully");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting player:", error);
-      toast.error(error.message || "Failed to delete player");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete player"
+      );
     }
   };
 
@@ -681,8 +687,8 @@ export default function PlayersManagement() {
                   update player statistics.
                 </li>
                 <li>
-                  Players with 0 wickets will have "Undefined" bowling strike
-                  rate but can still earn points from economy rate.
+                  Players with 0 wickets will have &quot;Undefined&quot; bowling
+                  strike rate but can still earn points from economy rate.
                 </li>
                 <li>
                   The minimum value for any player is 100,000, regardless of
@@ -768,7 +774,7 @@ export default function PlayersManagement() {
                   <option value="All-Rounder">All-Rounder</option>
                 </select>
                 <p className="text-xs text-muted-foreground">
-                  Player's primary role
+                  Player&apos;s primary role
                 </p>
               </div>
             </div>
@@ -988,7 +994,7 @@ export default function PlayersManagement() {
                     <option value="All-Rounder">All-Rounder</option>
                   </select>
                   <p className="text-xs text-muted-foreground">
-                    Player's primary role
+                    Player&apos;s primary role
                   </p>
                 </div>
               </div>

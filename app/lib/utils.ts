@@ -1,5 +1,15 @@
-import { ClassValue, clsx } from "clsx";
+import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+
+// Define a type for ClassValue
+type ClassValue =
+  | string
+  | number
+  | boolean
+  | undefined
+  | null
+  | Record<string, unknown>
+  | ClassValue[];
 
 // Utility function to merge Tailwind classes
 export function cn(...inputs: ClassValue[]) {
@@ -23,6 +33,6 @@ export function calculateTeamPoints(playersPoints: number[]): number {
 }
 
 // Determine if a team is complete (has 11 players)
-export function isTeamComplete(team: any[]): boolean {
+export function isTeamComplete(team: unknown[]): boolean {
   return team.length === 11;
 }

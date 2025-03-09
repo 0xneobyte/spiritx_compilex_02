@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/app/lib/utils/auth";
+import { clients } from "@/app/lib/utils/updates";
+import { connectToDB } from "@/app/lib/utils/database";
+import Update from "@/app/lib/models/update";
 
-// Map to store all active connections and their associated send methods
-const clients = new Map();
+// Define proper interfaces
+interface UpdateData {
+  title: string;
+  content: string;
+  type: string;
+  date?: Date;
+  [key: string]: string | Date | undefined;
+}
 
-// Function to send updates to all connected clients
-export const sendUpdateToClients = (updateType: string, data: any) => {
-  clients.forEach((client) => {
-    client.send(`data: ${JSON.stringify({ type: updateType, data })}\n\n`);
-  });
-};
-
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest): Promise<Response> {
   // Authenticate user
   const auth = authenticateRequest(req);
   if (!auth.authenticated || !auth.user) {
@@ -53,15 +55,39 @@ export async function GET(req: NextRequest) {
   });
 }
 
-// Helper function to send updates to specific users
-export const sendUpdateToUser = (
-  userId: string,
-  updateType: string,
-  data: any
-) => {
-  clients.forEach((client, clientId) => {
-    if (client.userId === userId) {
-      client.send(`data: ${JSON.stringify({ type: updateType, data })}\n\n`);
+export async function POST(req: NextRequest): Promise<Response> {
+  try {
+    // Check if user is admin
+    const auth = authenticateRequest(req, "admin");
+    if (!auth.authenticated) {
+      return NextResponse.json(
+        { message: "Admin access required" },
+        { status: 401 }
+      );
     }
-  });
-};
+
+    await connectToDB();
+
+    // Get update data from request
+    const updateData: UpdateData = await req.json();
+
+    // Remove unused variable
+    // const clientId = auth.user?.id;
+
+    // Create new update
+    const update = new Update({
+      ...updateData,
+      date: new Date(),
+    });
+
+    await update.save();
+
+    return NextResponse.json({ update }, { status: 201 });
+  } catch (error) {
+    console.error("Error creating update:", error);
+    return NextResponse.json(
+      { message: "Error creating update" },
+      { status: 500 }
+    );
+  }
+}

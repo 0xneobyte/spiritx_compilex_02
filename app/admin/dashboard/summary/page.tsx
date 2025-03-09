@@ -11,19 +11,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
 
 interface TournamentStats {
   totalRuns: number;
@@ -118,8 +105,8 @@ export default function TournamentSummary() {
         };
 
         setStats(cleanedData);
-      } catch (err: any) {
-        setError(err.message || "An error occurred");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "An error occurred");
         toast.error("Failed to load tournament statistics");
       } finally {
         setLoading(false);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
@@ -34,7 +34,6 @@ import {
   Bar,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
@@ -64,7 +63,7 @@ interface Player {
   economyRate: number;
   oversBowled: number;
   runsConceded: number;
-  bowlingStrikeRate: number;
+  bowlingStrikeRate: number | null;
   points: number;
   value: number;
   price: number;
@@ -85,6 +84,21 @@ const getCategoryStyles = (category: string) => {
   }
 };
 
+// Define interfaces for proper typing
+interface PlayerStats {
+  name: string;
+  totalRuns: number;
+  battingStrikeRate: number;
+  battingAverage: number;
+  wickets: number;
+  economyRate: number;
+  bowlingStrikeRate: number | null;
+  points: number;
+  value: number;
+  category: string;
+  university: string;
+}
+
 export default function PlayerStats() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [filteredPlayers, setFilteredPlayers] = useState<Player[]>([]);
@@ -99,7 +113,7 @@ export default function PlayerStats() {
   const [showPlayerDetail, setShowPlayerDetail] = useState(false);
 
   // Calculate cricket statistics
-  const calculateStats = (player: any) => {
+  const calculateStats = (player: Player): Player => {
     const calculatedPlayer = { ...player };
 
     // Calculate Batting Strike Rate: (Total Runs / Balls Faced) × 100
@@ -151,6 +165,7 @@ export default function PlayerStats() {
     if (
       player.wickets &&
       player.wickets > 0 &&
+      calculatedPlayer.bowlingStrikeRate !== null &&
       calculatedPlayer.bowlingStrikeRate > 0
     ) {
       bowlingPoints += 500 / calculatedPlayer.bowlingStrikeRate;
@@ -187,7 +202,7 @@ export default function PlayerStats() {
 
         const data = await response.json();
         // Ensure all players have required properties and calculate derived statistics
-        const cleanedPlayers = data.players.map((player: any) => {
+        const cleanedPlayers = data.players.map((player: Player) => {
           const basePlayer = {
             ...player,
             battingStrikeRate: player.battingStrikeRate || 0,
@@ -208,8 +223,9 @@ export default function PlayerStats() {
           // Calculate statistics based on raw data
           return calculateStats(basePlayer);
         });
-        setPlayers(cleanedPlayers);
-        setFilteredPlayers(cleanedPlayers);
+        const calculatedPlayers = cleanedPlayers.map(calculateStats);
+        setPlayers(calculatedPlayers);
+        setFilteredPlayers(calculatedPlayers); // Initialize filtered players with all players
       } catch (error) {
         console.error("Error fetching players:", error);
         toast.error("Failed to load players");
@@ -244,8 +260,22 @@ export default function PlayerStats() {
 
     // Sort players
     filtered.sort((a, b) => {
-      let valueA: any = a[sortField as keyof Player];
-      let valueB: any = b[sortField as keyof Player];
+      let valueA: string | number | boolean | null =
+        a[sortField as keyof Player];
+      let valueB: string | number | boolean | null =
+        b[sortField as keyof Player];
+
+      // Handle null values
+      if (valueA === null && valueB === null) return 0;
+      if (valueA === null) return sortDirection === "asc" ? -1 : 1;
+      if (valueB === null) return sortDirection === "asc" ? 1 : -1;
+
+      // Handle boolean values
+      if (typeof valueA === "boolean" && typeof valueB === "boolean") {
+        return sortDirection === "asc"
+          ? (valueA ? 1 : 0) - (valueB ? 1 : 0)
+          : (valueB ? 1 : 0) - (valueA ? 1 : 0);
+      }
 
       // Handle string comparisons
       if (typeof valueA === "string" && typeof valueB === "string") {
@@ -296,7 +326,7 @@ export default function PlayerStats() {
   };
 
   // Safe number formatter
-  const formatNumber = (value: number | undefined, decimals = 0) => {
+  const formatNumber = (value: number | null | undefined, decimals = 0) => {
     if (value === undefined || value === null) return "0";
 
     if (decimals > 0) {
@@ -313,50 +343,72 @@ export default function PlayerStats() {
     "All-Rounder": "#8884d8", // Purple color for All-Rounders
   };
 
-  const categoryDistribution = players.reduce((acc: any[], player) => {
-    const existingCategory = acc.find((item) => item.name === player.category);
-    if (existingCategory) {
-      existingCategory.value++;
-      existingCategory.label = `${existingCategory.name} (${existingCategory.value})`;
-    } else {
-      acc.push({
-        name: player.category,
-        value: 1,
-        label: `${player.category} (1)`,
-        fill: categoryColors[player.category] || "#FFBB28", // Default fallback color
-      });
-    }
-    return acc;
-  }, []);
+  const categoryDistribution = players.reduce(
+    (
+      acc: Array<{ name: string; value: number; label: string; fill: string }>,
+      player
+    ) => {
+      const existingCategory = acc.find(
+        (item) => item.name === player.category
+      );
+      if (existingCategory) {
+        existingCategory.value++;
+        existingCategory.label = `${existingCategory.name} (${existingCategory.value})`;
+      } else {
+        acc.push({
+          name: player.category,
+          value: 1,
+          label: `${player.category} (1)`,
+          fill: categoryColors[player.category] || "#FFBB28", // Default fallback color
+        });
+      }
+      return acc;
+    },
+    []
+  );
 
   // Calculate performance metrics by category
-  const performanceByCategory = players.reduce((acc: any, player) => {
-    const category = player.category;
-    if (!acc[category]) {
-      acc[category] = {
-        name: category,
-        batting: 0,
-        bowling: 0,
-        count: 0,
-      };
-    }
+  const performanceByCategory = players.reduce(
+    (
+      acc: Record<
+        string,
+        { name: string; batting: number; bowling: number; count: number }
+      >,
+      player
+    ) => {
+      const category = player.category;
+      if (!acc[category]) {
+        acc[category] = {
+          name: category,
+          batting: 0,
+          bowling: 0,
+          count: 0,
+        };
+      }
 
-    // Batting metrics
-    if (player.battingAverage > 0) {
-      acc[category].batting += player.battingAverage;
-    }
+      // Batting metrics
+      if (player.battingAverage > 0) {
+        acc[category].batting += player.battingAverage;
+      }
 
-    // Bowling metrics
-    if (player.economyRate > 0) {
-      acc[category].bowling += player.economyRate;
-    }
+      // Bowling metrics
+      if (player.economyRate > 0) {
+        acc[category].bowling += player.economyRate;
+      }
 
-    acc[category].count++;
-    return acc;
-  }, {});
+      acc[category].count++;
+      return acc;
+    },
+    {}
+  );
 
   const performanceData = Object.values(performanceByCategory).map(
-    (metric: any) => ({
+    (metric: {
+      name: string;
+      batting: number;
+      bowling: number;
+      count: number;
+    }) => ({
       name: metric.name,
       "Batting Average":
         metric.count > 0 ? Math.round(metric.batting / metric.count) : 0,
@@ -367,41 +419,23 @@ export default function PlayerStats() {
     })
   );
 
-  const topRunScorers = [...players]
-    .sort((a, b) => (b.totalRuns || 0) - (a.totalRuns || 0))
-    .slice(0, 5)
-    .map((player) => ({
-      name: player.name,
-      runs: player.totalRuns || 0,
-    }));
-
-  const topPerformers = [...players]
-    .sort((a, b) => (b.points || 0) - (a.points || 0))
-    .slice(0, 5)
-    .map((player) => ({
-      name: player.name,
-      points: Math.round(player.points || 0),
-      battingAverage: Math.round(player.battingAverage || 0),
-      economyRate: Number(player.economyRate?.toFixed(2) || 0),
-    }));
-
   // Calculate correct statistics
   const calcStatistics = () => {
     if (!players || players.length === 0) return null;
 
-    // Find highest run scorer
+    // Find highest run scorer from all players
     const highestRunScorer = players.reduce(
       (max, p) => ((p.totalRuns || 0) > (max.totalRuns || 0) ? p : max),
       players[0]
     );
 
-    // Find highest wicket taker
+    // Find highest wicket taker from all players
     const highestWicketTaker = players.reduce(
       (max, p) => ((p.wickets || 0) > (max.wickets || 0) ? p : max),
       players[0]
     );
 
-    // Find most valuable player by value (not price)
+    // Find most valuable player by value (not price) from all players
     const mostValuablePlayer = players.reduce(
       (max, p) => ((p.value || 0) > (max.value || 0) ? p : max),
       players[0]
@@ -499,21 +533,8 @@ export default function PlayerStats() {
 
   // Add a proper getFilteredAndSortedPlayers function that uses our sortPlayers function
   const getFilteredAndSortedPlayers = () => {
-    // First filter the players
-    const filteredPlayers = players.filter((player) => {
-      const matchesSearch =
-        searchText === "" ||
-        player.name.toLowerCase().includes(searchText.toLowerCase()) ||
-        player.university.toLowerCase().includes(searchText.toLowerCase());
-
-      const matchesCategory =
-        selectedCategory === "all" || player.category === selectedCategory;
-
-      return matchesSearch && matchesCategory;
-    });
-
-    // Then sort them using our custom sortPlayers function
-    return sortPlayers(filteredPlayers, sortField, sortDirection);
+    // Just return the already filtered and sorted players
+    return filteredPlayers;
   };
 
   // Use this function to get the filtered and sorted players

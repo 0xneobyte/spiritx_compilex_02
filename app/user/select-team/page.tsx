@@ -11,10 +11,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { formatCurrency } from "@/app/lib/utils";
@@ -25,17 +24,24 @@ interface Player {
   name: string;
   university: string;
   category: string;
+  totalRuns: number;
+  wickets: number;
   value: number;
+  price: number;
+  battingStrikeRate: number;
+  battingAverage: number;
+  economyRate: number;
+  [key: string]: string | number | boolean | undefined; // Properly typed index signature
 }
 
 export default function SelectTeamPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
   const [userTeam, setUserTeam] = useState<Player[]>([]);
   const [budget, setBudget] = useState(0);
   const [activeCategory, setActiveCategory] = useState("all");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserTeam = async () => {
@@ -48,8 +54,11 @@ export default function SelectTeamPage() {
         const data = await response.json();
         setUserTeam(data.team || []);
         setBudget(data.budget || 0);
-      } catch (err: any) {
-        setError(err.message || "Failed to load your team");
+      } catch (err) {
+        console.error("Error fetching team:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch your team"
+        );
       }
     };
 
@@ -70,8 +79,9 @@ export default function SelectTeamPage() {
 
         const data = await response.json();
         setPlayers(data.players);
-      } catch (err: any) {
-        setError(err.message || "An error occurred");
+      } catch (error: unknown) {
+        console.error("Error fetching players:", error);
+        toast.error("Failed to load players");
       } finally {
         setLoading(false);
       }
@@ -104,8 +114,11 @@ export default function SelectTeamPage() {
       }
 
       toast.success("Player added to your team");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to add player");
+    } catch (error: unknown) {
+      console.error("Error adding player:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add player"
+      );
     }
   };
 
@@ -130,8 +143,11 @@ export default function SelectTeamPage() {
       setBudget(data.budget);
 
       toast.success("Player removed from your team");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to remove player");
+    } catch (error: unknown) {
+      console.error("Error removing player:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to remove player"
+      );
     }
   };
 

@@ -3,8 +3,11 @@ import { connectToDB } from "@/app/lib/utils/database";
 import User from "@/app/lib/models/user";
 import Player from "@/app/lib/models/player";
 import { authenticateRequest } from "@/app/lib/utils/auth";
-import { sendUpdateToUser } from "../../../updates/route";
-import { calculatePlayerValueServer } from "@/app/lib/utils/playerValueServer";
+import { sendUpdateToUser } from "@/app/lib/utils/updates";
+import {
+  calculatePlayerValueServer,
+  PlayerData,
+} from "@/app/lib/utils/playerValueServer";
 
 export async function POST(req: NextRequest) {
   try {
@@ -66,7 +69,9 @@ export async function POST(req: NextRequest) {
     const valueToDeduct =
       playerValue !== undefined
         ? playerValue
-        : calculatePlayerValueServer(player);
+        : calculatePlayerValueServer(
+            player.toObject() as unknown as PlayerData
+          );
 
     // Check if user has enough budget
     if (user.budget < valueToDeduct) {
@@ -77,7 +82,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Add player to team and update budget
-    user.team.push(player._id);
+    if (player._id) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      user.team.push(player._id as any);
+    }
     user.budget -= valueToDeduct;
 
     await user.save();

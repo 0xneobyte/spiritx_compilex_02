@@ -3,18 +3,44 @@ import { connectToDB } from "@/app/lib/utils/database";
 import Player from "@/app/lib/models/player";
 import { authenticateRequest } from "@/app/lib/utils/auth";
 
+// Define a type for player data
+interface PlayerData {
+  ballsFaced?: number;
+  totalRuns?: number;
+  inningsPlayed?: number;
+  oversBowled?: number;
+  wickets?: number;
+  runsConceded?: number;
+  battingStrikeRate?: number;
+  battingAverage?: number;
+  bowlingStrikeRate?: number | null;
+  economyRate?: number;
+  points?: number;
+  value?: number;
+  price?: number;
+  [key: string]: string | number | boolean | null | undefined; // More specific type for index signature
+}
+
 // Helper function to calculate cricket statistics
-const calculateStats = (playerData: any) => {
+const calculateStats = (playerData: PlayerData): PlayerData => {
   const updatedPlayer = { ...playerData };
 
   // Calculate Batting Strike Rate
-  if (updatedPlayer.ballsFaced && updatedPlayer.ballsFaced > 0) {
+  if (
+    updatedPlayer.ballsFaced &&
+    updatedPlayer.ballsFaced > 0 &&
+    updatedPlayer.totalRuns !== undefined
+  ) {
     updatedPlayer.battingStrikeRate =
       (updatedPlayer.totalRuns / updatedPlayer.ballsFaced) * 100;
   }
 
   // Calculate Batting Average
-  if (updatedPlayer.inningsPlayed && updatedPlayer.inningsPlayed > 0) {
+  if (
+    updatedPlayer.inningsPlayed &&
+    updatedPlayer.inningsPlayed > 0 &&
+    updatedPlayer.totalRuns !== undefined
+  ) {
     updatedPlayer.battingAverage =
       updatedPlayer.totalRuns / updatedPlayer.inningsPlayed;
   }
@@ -33,7 +59,7 @@ const calculateStats = (playerData: any) => {
   }
 
   // Calculate Economy Rate: (Runs Conceded / Balls Bowled) × 6
-  if (ballsBowled > 0) {
+  if (ballsBowled > 0 && updatedPlayer.runsConceded !== undefined) {
     updatedPlayer.economyRate = (updatedPlayer.runsConceded / ballsBowled) * 6;
   } else {
     updatedPlayer.economyRate = 0;
@@ -44,7 +70,11 @@ const calculateStats = (playerData: any) => {
   let bowlingPoints = 0;
 
   // Batting component: (Batting Strike Rate / 5) + (Batting Average × 0.8)
-  if (updatedPlayer.battingStrikeRate > 0) {
+  if (
+    updatedPlayer.battingStrikeRate !== undefined &&
+    updatedPlayer.battingStrikeRate > 0 &&
+    updatedPlayer.battingAverage !== undefined
+  ) {
     battingPoints =
       updatedPlayer.battingStrikeRate / 5 + updatedPlayer.battingAverage * 0.8;
   }
@@ -53,13 +83,17 @@ const calculateStats = (playerData: any) => {
   if (
     updatedPlayer.wickets &&
     updatedPlayer.wickets > 0 &&
+    updatedPlayer.bowlingStrikeRate !== null &&
     updatedPlayer.bowlingStrikeRate > 0
   ) {
     bowlingPoints += 500 / updatedPlayer.bowlingStrikeRate;
   }
 
   // Always include economy rate component if economy rate is > 0
-  if (updatedPlayer.economyRate > 0) {
+  if (
+    updatedPlayer.economyRate !== undefined &&
+    updatedPlayer.economyRate > 0
+  ) {
     bowlingPoints += 140 / updatedPlayer.economyRate;
   }
 
@@ -79,15 +113,14 @@ const calculateStats = (playerData: any) => {
   return updatedPlayer;
 };
 
-interface Params {
-  id: string;
-}
-
 // Get a specific player
-export async function GET(req: NextRequest, { params }: { params: Params }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     // Check if user is admin
-    const auth = authenticateRequest(req, "admin");
+    const auth = authenticateRequest(request, "admin");
     if (!auth.authenticated) {
       return NextResponse.json(
         { message: "Admin access required" },
@@ -117,10 +150,13 @@ export async function GET(req: NextRequest, { params }: { params: Params }) {
 }
 
 // Update a player
-export async function PUT(req: NextRequest, { params }: { params: Params }) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     // Check if user is admin
-    const auth = authenticateRequest(req, "admin");
+    const auth = authenticateRequest(request, "admin");
     if (!auth.authenticated) {
       return NextResponse.json(
         { message: "Admin access required" },
@@ -130,7 +166,7 @@ export async function PUT(req: NextRequest, { params }: { params: Params }) {
 
     await connectToDB();
 
-    let playerData = await req.json();
+    let playerData = await request.json();
     const player = await Player.findById(params.id);
 
     if (!player) {
@@ -140,16 +176,15 @@ export async function PUT(req: NextRequest, { params }: { params: Params }) {
       );
     }
 
-    // Remove restriction for original dataset players
     // Calculate derived statistics
     playerData = calculateStats(playerData);
 
-    // Update player
-    Object.keys(playerData).forEach((key) => {
+    // Update player safely - using mongoose's set method
+    for (const [key, value] of Object.entries(playerData)) {
       if (key !== "_id") {
-        player[key] = playerData[key];
+        player.set(key, value);
       }
-    });
+    }
 
     await player.save();
 
@@ -170,10 +205,13 @@ export async function PUT(req: NextRequest, { params }: { params: Params }) {
 }
 
 // Delete a player
-export async function DELETE(req: NextRequest, { params }: { params: Params }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     // Check if user is admin
-    const auth = authenticateRequest(req, "admin");
+    const auth = authenticateRequest(request, "admin");
     if (!auth.authenticated) {
       return NextResponse.json(
         { message: "Admin access required" },
@@ -192,7 +230,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Params }) {
       );
     }
 
-    // Remove restriction for original dataset players
     await Player.findByIdAndDelete(params.id);
 
     return NextResponse.json(

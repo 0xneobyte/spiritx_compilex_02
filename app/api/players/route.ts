@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     const category = url.searchParams.get("category");
 
     // Build query
-    const query: any = {};
+    const query: Record<string, string | RegExp> = {};
     if (category && ["Batsman", "Bowler", "All-Rounder"].includes(category)) {
       query.category = category;
     }
@@ -32,7 +32,9 @@ export async function GET(req: NextRequest) {
 
       // Only admins can see points
       if (auth.user?.role !== "admin") {
-        delete playerObj.points;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { points, ...rest } = playerObj;
+        return rest;
       }
 
       return playerObj;

@@ -110,7 +110,11 @@ const PlayerCard: React.FC<PlayerCardProps> = ({
           {showActions && (
             <div>
               {inTeam ? (
-                <Button variant="danger" size="sm" onClick={onRemoveFromTeam}>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={onRemoveFromTeam}
+                >
                   Remove
                 </Button>
               ) : (

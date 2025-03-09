@@ -20,7 +20,6 @@ import {
   TableFooter,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/app/lib/utils";
 import { Progress } from "@/components/ui/progress";
@@ -52,7 +51,6 @@ export default function BudgetPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [userTeam, setUserTeam] = useState<Player[]>([]);
-  const [budget, setBudget] = useState(0);
   const [initialBudget, setInitialBudget] = useState(9000000); // Default initial budget
 
   useEffect(() => {
@@ -66,7 +64,6 @@ export default function BudgetPage() {
 
         const data = await response.json();
         setUserTeam(data.team || []);
-        setBudget(data.budget || 0);
 
         // Set fixed initial budget to 9,000,000 as per requirements
         setInitialBudget(9000000);
@@ -80,8 +77,12 @@ export default function BudgetPage() {
         console.log("Current budget:", data.budget);
         console.log("Total player value (spent):", spentBudget);
         console.log("Initial budget (fixed):", 9000000);
-      } catch (err: any) {
-        setError(err.message || "Failed to load your budget information");
+      } catch (err: unknown) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load your budget information"
+        );
       } finally {
         setLoading(false);
       }
@@ -239,7 +240,7 @@ export default function BudgetPage() {
                 </div>
               ) : userTeam.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  <p>You haven't added any players to your team yet.</p>
+                  <p>You haven&apos;t added any players to your team yet.</p>
                   <p className="text-sm mt-2">
                     Visit the team selection page to add players.
                   </p>
@@ -306,6 +307,10 @@ export default function BudgetPage() {
           </Card>
         </div>
       </div>
+
+      <p className="text-muted-foreground">
+        Don&apos;t worry about running out! You can always get more.
+      </p>
     </div>
   );
 }

@@ -13,9 +13,11 @@ export default function SignupPage() {
     username: "",
     password: "",
     confirmPassword: "",
+    fullName: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -38,13 +40,13 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     setError("");
 
     if (!validateForm()) {
+      setLoading(false);
       return;
     }
-
-    setLoading(true);
 
     try {
       const response = await fetch("/api/auth/signup", {
@@ -55,6 +57,7 @@ export default function SignupPage() {
         body: JSON.stringify({
           username: formData.username,
           password: formData.password,
+          fullName: formData.fullName,
         }),
       });
 
@@ -64,9 +67,16 @@ export default function SignupPage() {
         throw new Error(data.message || "Signup failed");
       }
 
-      router.push("/user/players");
-    } catch (err: any) {
-      setError(err.message || "An error occurred during signup");
+      setSuccessMessage(
+        "Account created successfully! Redirecting to login..."
+      );
+
+      setTimeout(() => {
+        router.push("/auth/login");
+      }, 2000);
+    } catch (error: unknown) {
+      console.error("Signup error:", error);
+      setError(error instanceof Error ? error.message : "Signup failed");
     } finally {
       setLoading(false);
     }
@@ -112,6 +122,24 @@ export default function SignupPage() {
                     />
                   </svg>
                   {error}
+                </div>
+              )}
+
+              {successMessage && (
+                <div className="bg-green-50 border border-green-100 text-green-600 p-4 rounded-xl text-sm flex items-center">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 mr-2 text-green-500"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  {successMessage}
                 </div>
               )}
 
@@ -172,6 +200,26 @@ export default function SignupPage() {
                   autoComplete="new-password"
                   className="appearance-none block w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900"
                   placeholder="Confirm your password"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label
+                  htmlFor="fullName"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Full Name
+                </label>
+                <input
+                  id="fullName"
+                  type="text"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  required
+                  autoComplete="name"
+                  className="appearance-none block w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900"
+                  placeholder="Enter your full name"
                 />
               </div>
             </CardContent>

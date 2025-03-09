@@ -38,25 +38,27 @@ export async function POST(req: NextRequest) {
 
     // Generate token
     const token = generateToken({
-      id: user._id.toString(),
-      username: user.username,
+      id: user._id?.toString() || "",
+      username: user.username as string,
       role: username === process.env.ADMIN_USERNAME ? "admin" : "user",
     });
 
-    // Set token in cookie
-    await setTokenCookie(token);
-
-    return NextResponse.json(
+    // Create response
+    const response = NextResponse.json(
       {
         message: "User registered successfully",
         user: {
           id: user._id,
           username: user.username,
           budget: user.budget,
+          role: username === process.env.ADMIN_USERNAME ? "admin" : "user",
         },
       },
       { status: 201 }
     );
+
+    // Set token in cookie
+    return setTokenCookie(token, response);
   } catch (error) {
     console.error("Signup error:", error);
     return NextResponse.json(
