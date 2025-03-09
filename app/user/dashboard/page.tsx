@@ -21,6 +21,7 @@ import {
   Lightbulb,
   Award,
   Settings,
+  RefreshCcw,
 } from "lucide-react";
 
 interface User {
@@ -55,128 +56,130 @@ export default function UserDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [teamPlayers, setTeamPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
-  const [totalPoints, setTotalPoints] = useState(0);
+  const [totalPoints, setTotalPoints] = useState<number | null>(null);
   const [leaderboardRank, setLeaderboardRank] = useState<number | null>(null);
 
-  const fetchUser = async () => {
+  // Combined data fetching function to ensure proper sequencing
+  const fetchAllData = async () => {
+    setLoading(true);
     try {
-      const response = await fetch("/api/user/me");
-      if (!response.ok) throw new Error("Failed to fetch user data");
-      const data = await response.json();
-      console.log("User API response:", data);
+      console.log("Starting data fetch sequence");
 
-      // The API returns user data directly
-      setUser({
-        id: data.id || "",
-        username: data.username || "",
-        budget: data.budget || 0,
-        role: data.role || "user",
-      });
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      // Set fallback user data
-      setUser({
-        id: "",
-        username: "Guest",
-        budget: 0,
-        role: "user",
-      });
-    }
-  };
+      // 1. First fetch user data
+      const userResponse = await fetch("/api/user/me");
+      if (!userResponse.ok) throw new Error("Failed to fetch user data");
+      const userData = await userResponse.json();
+      console.log("User data fetched:", userData);
 
-  const fetchTeam = async () => {
-    try {
-      const response = await fetch("/api/user/team");
-      if (!response.ok) throw new Error("Failed to fetch team data");
-      const data = await response.json();
+      // Set user data
+      const currentUser = {
+        id: userData.id || "",
+        username: userData.username || "",
+        budget: userData.budget || 0,
+        role: userData.role || "user",
+      };
+      setUser(currentUser);
 
-      console.log("Team API response:", data);
+      // 2. Then fetch team data
+      const teamResponse = await fetch("/api/user/team");
+      if (!teamResponse.ok) throw new Error("Failed to fetch team data");
+      const teamData = await teamResponse.json();
+      console.log("Team data fetched:", teamData);
 
-      // The API returns team array directly, not data.players
-      const players = data.team || [];
-
-      // Sort by points (highest first)
+      // Set team players
+      const players = teamData.team || [];
       const sortedPlayers = [...players].sort(
         (a, b) => (b.points || 0) - (a.points || 0)
       );
       setTeamPlayers(sortedPlayers);
 
-      // Calculate total points
-      const totalTeamPoints =
-        data.teamPoints ||
-        sortedPlayers.reduce((sum, player) => sum + (player.points || 0), 0);
-      setTotalPoints(totalTeamPoints || 0);
-    } catch (error) {
-      console.error("Error fetching team:", error);
-      // Set empty arrays and zeros as fallback
-      setTeamPlayers([]);
-      setTotalPoints(0);
-    }
-  };
+      // 3. Finally fetch leaderboard data - this is the source of truth for points
+      const leaderboardResponse = await fetch("/api/leaderboard");
+      if (!leaderboardResponse.ok)
+        throw new Error("Failed to fetch leaderboard");
+      const leaderboardData = await leaderboardResponse.json();
+      console.log("Leaderboard data fetched:", leaderboardData);
 
-  const fetchLeaderboardRank = async () => {
-    try {
-      const response = await fetch("/api/leaderboard");
-      if (!response.ok) throw new Error("Failed to fetch leaderboard");
-
-      const data = await response.json();
-      console.log("Leaderboard API response:", data);
-
-      const userId = user?.id;
-
-      if (userId && data.leaderboard && Array.isArray(data.leaderboard)) {
-        // Find the current user's entry in the leaderboard
-        const userEntry = data.leaderboard.find(
+      if (
+        leaderboardData.leaderboard &&
+        Array.isArray(leaderboardData.leaderboard)
+      ) {
+        // Find the current user in the leaderboard
+        const userEntry = leaderboardData.leaderboard.find(
           (entry: LeaderboardEntry) =>
-            entry.id === userId ||
-            entry.id?.toString() === userId ||
-            entry.username === user?.username
+            entry.id === currentUser.id ||
+            entry.id?.toString() === currentUser.id ||
+            entry.username === currentUser.username
         );
 
         if (userEntry) {
-          // If user is found, get their index + 1 as rank
+          // Get rank
           const rank =
-            data.leaderboard.findIndex(
+            leaderboardData.leaderboard.findIndex(
               (entry: LeaderboardEntry) =>
-                entry.id === userId ||
-                entry.id?.toString() === userId ||
-                entry.username === user?.username
+                entry.id === currentUser.id ||
+                entry.id?.toString() === currentUser.id ||
+                entry.username === currentUser.username
             ) + 1;
-          setLeaderboardRank(rank > 0 ? rank : null);
 
-          // Important: Update the points from the leaderboard data for consistency
-          if (userEntry.points !== undefined) {
-            console.log("Setting points from leaderboard:", userEntry.points);
-            setTotalPoints(userEntry.points);
-          }
+          // Set leaderboard data - THIS IS THE SOURCE OF TRUTH FOR POINTS
+          console.log("Setting points from leaderboard:", userEntry.points);
+          setLeaderboardRank(rank > 0 ? rank : null);
+          setTotalPoints(userEntry.points);
         } else {
+          console.log(
+            "User not found in leaderboard, using team points calculation"
+          );
           setLeaderboardRank(null);
+
+          // Fallback to calculated points if not in leaderboard
+          const calculatedPoints =
+            teamData.teamPoints ||
+            sortedPlayers.reduce(
+              (sum: number, player: Player) => sum + (player.points || 0),
+              0
+            );
+          setTotalPoints(calculatedPoints || 0);
         }
+      } else {
+        // Fallback to calculated points if leaderboard data is invalid
+        console.log("Invalid leaderboard data, using team points calculation");
+        const calculatedPoints =
+          teamData.teamPoints ||
+          sortedPlayers.reduce(
+            (sum: number, player: Player) => sum + (player.points || 0),
+            0
+          );
+        setTotalPoints(calculatedPoints || 0);
       }
     } catch (error) {
-      console.error("Error fetching leaderboard:", error);
-      setLeaderboardRank(null);
+      console.error("Error fetching data:", error);
+      // Don't reset data on error to prevent flickering
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Single useEffect to fetch all data
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      await fetchUser();
-      await fetchTeam();
-      setLoading(false);
-    };
+    fetchAllData();
 
-    fetchData();
+    // Optional: Set up polling to keep data fresh
+    const intervalId = setInterval(() => {
+      console.log("Refreshing data...");
+      fetchAllData();
+    }, 60000); // Refresh every minute
+
+    return () => clearInterval(intervalId);
   }, []);
 
-  useEffect(() => {
-    if (user && !loading) {
-      fetchLeaderboardRank();
-    }
-  }, [user, loading]);
+  // Format points for display with proper decimal places
+  const formatPoints = (points: number | null): string => {
+    if (points === null) return "...";
+    return points.toFixed(1);
+  };
 
-  if (loading) {
+  if (loading && !totalPoints) {
     return (
       <div className="container max-w-6xl mx-auto p-6">
         <div className="flex justify-between items-center mb-8">
@@ -216,7 +219,7 @@ export default function UserDashboard() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl md:text-4xl font-bold text-slate-800 tracking-tight">
-            Welcome, {user?.username}!
+            Welcome, {user?.username || "Player"}!
           </h1>
           <p className="text-slate-600 mt-1">
             Here's an overview of your fantasy cricket team
@@ -238,12 +241,22 @@ export default function UserDashboard() {
               </p>
             </div>
           )}
-          <Link href="/user/team">
-            <Button className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Manage Team
+          <div className="flex gap-2">
+            <Button
+              onClick={() => fetchAllData()}
+              variant="outline"
+              className="flex items-center gap-1 border-slate-200 bg-white"
+              aria-label="Refresh data"
+            >
+              <RefreshCcw className="h-4 w-4" />
             </Button>
-          </Link>
+            <Link href="/user/team">
+              <Button className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Manage Team
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -272,7 +285,7 @@ export default function UserDashboard() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="text-3xl font-bold text-slate-800">
-                    {totalPoints ? totalPoints.toFixed(1) : "0.0"}
+                    {formatPoints(totalPoints)}
                   </p>
                   <p className="text-sm text-slate-600">Total Points</p>
                 </div>
@@ -381,7 +394,7 @@ export default function UserDashboard() {
                 </div>
                 <div className="bg-purple-100 px-3 py-1 rounded-full">
                   <p className="text-sm font-medium text-purple-700">
-                    {totalPoints ? totalPoints.toFixed(1) : "0.0"} pts
+                    {formatPoints(totalPoints)} pts
                   </p>
                 </div>
               </div>
