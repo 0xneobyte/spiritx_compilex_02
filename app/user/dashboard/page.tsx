@@ -179,6 +179,13 @@ export default function UserDashboard() {
     return points.toFixed(1);
   };
 
+  const tips = [
+    "Balance your team with both batsmen and bowlers",
+    "Invest in all-rounders for maximum points",
+    "Track player performance and make strategic replacements",
+    "Don&apos;t spend your entire budget - save for future transfers",
+  ];
+
   if (loading && !totalPoints) {
     return (
       <div className="container max-w-6xl mx-auto p-6">
@@ -196,24 +203,6 @@ export default function UserDashboard() {
     );
   }
 
-  const nextMatchDate = new Date();
-  nextMatchDate.setDate(nextMatchDate.getDate() + 3);
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const tips = [
-    "Balance your team with both batsmen and bowlers",
-    "Invest in all-rounders for maximum points",
-    "Track player performance and make strategic replacements",
-    "Don&apos;t spend your entire budget - save for future transfers",
-  ];
-
   return (
     <div className="container max-w-6xl mx-auto p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -222,7 +211,7 @@ export default function UserDashboard() {
             Welcome, {user?.username || "Player"}!
           </h1>
           <p className="text-slate-600 mt-1">
-            Here's an overview of your fantasy cricket team
+            Here&apos;s an overview of your fantasy cricket team
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -471,7 +460,7 @@ export default function UserDashboard() {
             ) : (
               <div className="text-center py-6">
                 <p className="text-slate-600 mb-4">
-                  You haven't selected any players yet!
+                  You haven&apos;t selected any players yet!
                 </p>
                 <Link href="/user/team">
                   <Button className="bg-purple-600 hover:bg-purple-700">
