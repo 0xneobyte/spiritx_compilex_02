@@ -55,8 +55,8 @@ export default function LoginPage() {
           console.log("Redirecting to admin dashboard");
           router.push("/admin/dashboard");
         } else {
-          console.log("Redirecting to user team page");
-          router.push("/user/myteam");
+          console.log("Redirecting to user dashboard");
+          router.push("/user/dashboard");
         }
       }
     } catch (error: unknown) {
