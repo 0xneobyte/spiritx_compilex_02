@@ -1,24 +1,44 @@
 import mongoose from "mongoose";
 
-let isConnected = false;
+const MONGODB_URI =
+  process.env.MONGODB_URI || "mongodb://localhost:27017/spirit11";
+
+// Global variable to maintain connection status across serverless function invocations
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
 
 export const connectToDB = async () => {
-  mongoose.set("strictQuery", true);
+  if (cached.conn) {
+    // Use existing connection
+    return cached.conn;
+  }
 
-  if (isConnected) {
-    console.log("MongoDB is already connected");
-    return;
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false,
+    };
+
+    mongoose.set("strictQuery", true);
+    cached.promise = mongoose
+      .connect(MONGODB_URI, opts)
+      .then((mongoose) => {
+        console.log("MongoDB connected successfully");
+        return mongoose;
+      })
+      .catch((error) => {
+        console.error("Error connecting to MongoDB:", error);
+        throw error;
+      });
   }
 
   try {
-    const MONGODB_URI =
-      process.env.MONGODB_URI || "mongodb://localhost:27017/spirit11";
-
-    await mongoose.connect(MONGODB_URI);
-
-    isConnected = true;
-    console.log("MongoDB connected");
-  } catch (error) {
-    console.log("Error connecting to MongoDB:", error);
+    cached.conn = await cached.promise;
+    return cached.conn;
+  } catch (e) {
+    cached.promise = null;
+    throw e;
   }
 };

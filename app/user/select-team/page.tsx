@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { formatCurrency } from "@/app/lib/utils";
+import { calculatePlayerValue } from "@/app/lib/utils/playerValue";
 
 interface Player {
   _id: string;
@@ -176,28 +177,6 @@ export default function SelectTeamPage() {
     return userTeam.some((player) => player._id === playerId);
   };
 
-  // Calculate player value on the fly if needed
-  const getPlayerValue = (player: Player) => {
-    // If the player already has a value in the database, use that
-    if (player.value > 0) return player.value;
-
-    // If no value in database, we need to calculate it based on player's stats
-    // This assumes we'd have access to the player's full stats
-    // For this implementation, we'll use a placeholder calculation
-    // In a real implementation, we would fetch the full player details from the API
-    try {
-      // For a more accurate implementation, we could fetch the player's details with stats
-      // const fullPlayerDetails = await fetch(`/api/players/${player._id}`).then(res => res.json());
-      // Then use the same calculation logic as the server
-
-      // For now, using a default value
-      return 1000000; // Default value for players without a set value
-    } catch (err) {
-      console.error("Error calculating player value:", err);
-      return 1000000; // Default fallback
-    }
-  };
-
   if (error) {
     return (
       <div className="min-h-screen p-8 flex items-center justify-center">
@@ -319,7 +298,7 @@ export default function SelectTeamPage() {
                         {player.category}
                       </Badge>
                       <span className="font-semibold text-right">
-                        {formatCurrency(getPlayerValue(player))}
+                        {formatCurrency(calculatePlayerValue(player))}
                       </span>
                     </div>
                   </CardContent>
@@ -338,7 +317,7 @@ export default function SelectTeamPage() {
                         onClick={() => addPlayerToTeam(player._id)}
                         disabled={
                           userTeam.length >= 11 ||
-                          budget < getPlayerValue(player)
+                          budget < calculatePlayerValue(player)
                         }
                       >
                         Add to Team

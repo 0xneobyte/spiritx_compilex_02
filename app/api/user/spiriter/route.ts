@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/app/lib/utils/auth";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Sample data from CSV - including ALL players
 const samplePlayers = [
   {
     name: "Chamika Chandimal",
@@ -613,26 +612,18 @@ const playersWithStats = samplePlayers.map((player) => {
     strikeRate: strikeRate,
     economy: economy,
     bowlingStrikeRate: bowlingStrikeRate,
-    performanceScore: performanceScore, // Only used internally
+    performanceScore: performanceScore, 
     value: calculatedValue,
   };
 });
 
-// Function to find the optimal team of 11 players
 const findOptimalTeam = () => {
   try {
-    // Sort players by performance score
     const sortedPlayers = [...playersWithStats].sort(
       (a, b) => b.performanceScore - a.performanceScore
     );
 
-    // We need a balanced team with:
-    // - At least 3 batsmen
-    // - At least 3 bowlers
-    // - At least 1 all-rounder
-    // - The remaining 4 slots filled with highest-score players
 
-    // Filter players by category
     const batsmen = sortedPlayers.filter(
       (player) => player.category === "Batsman"
     );
@@ -643,7 +634,6 @@ const findOptimalTeam = () => {
       (player) => player.category === "All-Rounder"
     );
 
-    // Check if we have enough players
     if (batsmen.length < 3 || bowlers.length < 3 || allRounders.length < 1) {
       return {
         success: false,
@@ -651,30 +641,24 @@ const findOptimalTeam = () => {
           "Not enough players in required categories to form a balanced team.",
       };
     }
-
-    // Select top players from each category
     const selectedBatsmen = batsmen.slice(0, 3);
     const selectedBowlers = bowlers.slice(0, 3);
     const selectedAllRounders = allRounders.slice(0, 1);
 
-    // Combine selected players
     let selectedPlayers = [
       ...selectedBatsmen,
       ...selectedBowlers,
       ...selectedAllRounders,
     ];
 
-    // For the remaining 4 slots, select highest-score players not already selected
     const remainingPlayers = sortedPlayers.filter(
       (player) =>
         !selectedPlayers.some((selected) => selected.name === player.name)
     );
 
-    // Add top 4 remaining players
     const additionalPlayers = remainingPlayers.slice(0, 4);
     selectedPlayers = [...selectedPlayers, ...additionalPlayers];
 
-    // Format player data (excluding performance score)
     const formattedPlayers = selectedPlayers.map((player) => ({
       name: player.name,
       university: player.university,
@@ -682,7 +666,6 @@ const findOptimalTeam = () => {
       value: player.value,
     }));
 
-    // Calculate total team value
     const totalTeamValue = selectedPlayers.reduce(
       (sum, player) => sum + player.value,
       0
@@ -702,11 +685,9 @@ const findOptimalTeam = () => {
   }
 };
 
-// Minimal fallback handler for when Gemini API fails completely
 const getMinimalFallback = (question: string) => {
   const lowerCaseQuestion = question.toLowerCase();
 
-  // Only keep handler for team recommendations and basic universal fallback
   if (
     lowerCaseQuestion.includes("best team") ||
     lowerCaseQuestion.includes("optimal team") ||
@@ -715,7 +696,6 @@ const getMinimalFallback = (question: string) => {
     lowerCaseQuestion.includes("highest points team") ||
     (lowerCaseQuestion.includes("team") && lowerCaseQuestion.includes("best"))
   ) {
-    // Keep team recommendation logic as it's algorithmically determined
     const optimalTeam = findOptimalTeam();
 
     if (!optimalTeam.success) {
@@ -747,36 +727,28 @@ const getMinimalFallback = (question: string) => {
     return "I'm sorry, I cannot reveal player points information.";
   }
 
-  // Fallback for complete failure
   return "I don't have enough knowledge to answer that question.";
 };
 
-// Process query with Gemini API with better error handling
 const processWithGemini = async (prompt: string, context: string) => {
   try {
-    // Log the API key presence (not the actual key)
     console.log("Gemini API Key present:", Boolean(process.env.GEMINI_API_KEY));
 
-    // Check if API key exists
     if (!process.env.GEMINI_API_KEY) {
       console.error("Gemini API key is missing");
-      // Return minimal fallback
       return getMinimalFallback(prompt.split("User question: ")[1] || prompt);
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    // Use the correct model name as specified in the curl example
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    // Safety settings to avoid rejections
     const generationConfig = {
-      temperature: 0.8, // Increase slightly for more variability
+      temperature: 0.8, 
       topK: 40,
       topP: 0.95,
       maxOutputTokens: 1024,
     };
 
-    // Try to generate content with timeout
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(
         () => reject(new Error("Gemini API request timed out")),
@@ -809,9 +781,7 @@ const processWithGemini = async (prompt: string, context: string) => {
   }
 };
 
-// Create comprehensive player context for Gemini
 const buildPlayerContext = () => {
-  // Create CSV-like representation of player data
   let csvData =
     "Name,University,Category,TotalRuns,BallsFaced,InningsPlayed,Wickets,OversBowled,RunsConceded,BattingStrikeRate,BattingAverage,Economy,BowlingStrikeRate,Value\n";
 
@@ -819,7 +789,6 @@ const buildPlayerContext = () => {
     csvData += `${player.name},${player.university},${player.category},${player.totalRuns},${player.ballsFaced},${player.inningsPlayed},${player.wickets},${player.oversBowled},${player.runsConceded},${player.strikeRate},${player.battingAverage},${player.economy},${player.bowlingStrikeRate},${player.value}\n`;
   });
 
-  // Add context with detailed instructions on understanding the data
   let context = "Cricket Tournament Player Dataset:\n\n";
   context += csvData;
   context += "\n\nPlayer Statistics Explanation:\n";
@@ -843,13 +812,11 @@ const buildPlayerContext = () => {
 
 export async function POST(req: NextRequest) {
   try {
-    // Check if user is authenticated
     const auth = authenticateRequest(req);
     if (!auth.authenticated || !auth.user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    // Get message from request
     const { message } = await req.json();
 
     if (!message) {
@@ -863,7 +830,6 @@ export async function POST(req: NextRequest) {
 
     const lowerCaseMessage = message.toLowerCase();
 
-    // Special handling for team recommendation request - keep this for consistent results
     if (
       lowerCaseMessage.includes("best team") ||
       lowerCaseMessage.includes("optimal team") ||
@@ -882,7 +848,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Format team recommendation response
       let response = "Here's my recommendation for the best possible team:\n\n";
 
       optimalTeam.team?.forEach((player, index) => {
@@ -898,7 +863,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: response }, { status: 200 });
     }
 
-    // Check for explicit point queries to block them - ONLY check the current message
     if (
       lowerCaseMessage.includes("points") ||
       lowerCaseMessage.includes("score") ||
@@ -912,11 +876,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // For all other queries, use Gemini with player context
     console.log("Using Gemini API for response");
     const playerContext = buildPlayerContext();
 
-    // Prepare instructions for Gemini - ensuring stateless behavior
     const instructions = `
     You are Spiriter, a helpful cricket assistant for the Spirit11 cricket fantasy league.
     Answer the user's question based on the player data provided.
@@ -957,11 +919,9 @@ export async function POST(req: NextRequest) {
     User question: ${message}
     `;
 
-    // Process with Gemini - pass a safety flag to indicate this is a fresh, independent question
     const responseText = await processWithGemini(instructions, playerContext);
 
-    // Final safety check to ensure no points are mentioned in the response
-    // Only check the response, not the user's input
+
     if (
       responseText &&
       (responseText.toLowerCase().includes("point") ||
@@ -984,7 +944,6 @@ export async function POST(req: NextRequest) {
     );
   } catch (error) {
     console.error("Spiriter error:", error);
-    // Provide more helpful error message
     const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
       {

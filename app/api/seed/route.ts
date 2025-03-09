@@ -16,9 +16,27 @@ export async function GET(req: NextRequest) {
   try {
     console.log("Starting database seeding process...");
 
+    // Check if force parameter is provided
+    const url = new URL(req.url);
+    const force = url.searchParams.get("force") === "true";
+    console.log(`Force mode: ${force}`);
+
     // First, connect to the database
     await connectToDB();
     console.log("Database connected successfully");
+
+    // If force is true, delete the predefined user first
+    if (force) {
+      console.log("Force mode enabled, deleting predefined user...");
+      const deletedUser = await User.findOneAndDelete({
+        username: "spiritx_2025",
+      });
+      if (deletedUser) {
+        console.log("Deleted existing spiritx_2025 user");
+      } else {
+        console.log("Predefined user not found, nothing to delete");
+      }
+    }
 
     // Check if CSV file exists
     const csvFilePath = path.join(process.cwd(), "sample_data.csv");

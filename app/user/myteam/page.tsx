@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { formatCurrency } from "@/app/lib/utils";
+import { calculatePlayerValue } from "@/app/lib/utils/playerValue";
 
 interface Player {
   _id: string;
@@ -75,7 +76,7 @@ export default function TeamPage() {
       // Find the player and value
       const playerToRemove = userTeam.find((p) => p._id === playerId);
       if (!playerToRemove) return;
-      const playerValue = getPlayerValue(playerToRemove);
+      const playerValue = calculatePlayerValue(playerToRemove);
 
       const response = await fetch("/api/user/team/remove", {
         method: "POST",
@@ -199,13 +200,6 @@ export default function TeamPage() {
     return points;
   };
 
-  // Calculate player value
-  const getPlayerValue = (player: Player) => {
-    if (player.value > 0) return player.value;
-    const points = calculatePlayerPoints(player);
-    return Math.round(((9 * points + 100) * 1000) / 50000) * 50000;
-  };
-
   // Calculate team points
   const calculateTeamPoints = (team = userTeam) => {
     if (team.length !== 11) return null;
@@ -301,7 +295,7 @@ export default function TeamPage() {
                     </Badge>
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-medium">
-                        {formatCurrency(getPlayerValue(player))}
+                        {formatCurrency(calculatePlayerValue(player))}
                       </span>
                       <button
                         className="text-xs text-red-600 hover:text-red-800"

@@ -22,12 +22,10 @@ export default function SpiriterPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Scroll to bottom of chat when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Focus input on load
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
@@ -37,21 +35,16 @@ export default function SpiriterPage() {
 
     if (!input.trim()) return;
 
-    // Add user message to chat
     const userMessage = { role: "user" as const, content: input };
     setMessages((prev) => [...prev, userMessage]);
 
-    // Clear input
     setInput("");
 
     try {
       setIsLoading(true);
 
-      // Add typing indicator
       setMessages((prev) => [...prev, { role: "assistant", content: "..." }]);
 
-      // Only send the current question to the API, not the entire history
-      // This ensures each question is evaluated independently
       const response = await fetch("/api/user/spiriter", {
         method: "POST",
         headers: {
@@ -59,7 +52,6 @@ export default function SpiriterPage() {
         },
         body: JSON.stringify({
           message: input,
-          // Don't include chat history in the request
         }),
       });
 
@@ -69,18 +61,16 @@ export default function SpiriterPage() {
 
       const data = await response.json();
 
-      // Replace typing indicator with actual response
       setMessages((prev) => [
-        ...prev.slice(0, -1), // Remove the typing indicator
+        ...prev.slice(0, -1),
         { role: "assistant", content: data.message },
       ]);
     } catch (error) {
       console.error("Error getting response:", error);
       toast.error("Sorry, I couldn't process your request. Please try again.");
 
-      // Replace typing indicator with error message
       setMessages((prev) => [
-        ...prev.slice(0, -1), // Remove the typing indicator
+        ...prev.slice(0, -1),
         {
           role: "assistant",
           content:
@@ -89,12 +79,10 @@ export default function SpiriterPage() {
       ]);
     } finally {
       setIsLoading(false);
-      // Focus back on input
       inputRef.current?.focus();
     }
   };
 
-  // Suggestions for users
   const suggestions = [
     "Who are the players from University of Colombo?",
     "Can you suggest the best possible team?",
@@ -198,7 +186,6 @@ export default function SpiriterPage() {
           )}
         </div>
 
-        {/* Suggestions */}
         <div className="p-2 border-t border-gray-200 bg-gray-50">
           <p className="text-xs text-gray-500 mb-2 font-medium">Try asking:</p>
           <div className="flex flex-wrap gap-2">

@@ -103,11 +103,18 @@ export const createPredefinedUser = async () => {
     // Check if predefined user already exists
     const existingUser = await User.findOne({ username: "spiritx_2025" });
     if (existingUser) {
+      // Log details about the existing user for debugging
+      console.log("Predefined user already exists with details:");
+      console.log(`- Username: ${existingUser.username}`);
+      console.log(`- Budget: ${existingUser.budget}`);
+      console.log(`- Team size: ${existingUser.team.length}`);
+      
       return {
         success: true,
         message: "Predefined user already exists, skipping...",
         userCreated: false,
         teamSize: existingUser.team.length,
+        budget: existingUser.budget
       };
     }
 
@@ -155,13 +162,24 @@ export const createPredefinedUser = async () => {
     }
 
     // Create the predefined user
+    const totalPlayerValue = players.reduce((total, player) => {
+      console.log(`Player: ${player.name}, Value: ${player.value}`);
+      return (
+        total +
+        (typeof player.value === "number" && player.value > 0
+          ? player.value
+          : 0)
+      );
+    }, 0);
+
+    console.log(`Total player value: ${totalPlayerValue}`);
+
     const user = new User({
       username: "spiritx_2025",
       password: "SpiritX@2025",
       team: players.map((player) => player._id),
-      // Adjust budget based on the total value of selected players
-      budget:
-        9000000 - players.reduce((total, player) => total + player.value, 0),
+      // Set budget to fixed 9,000,000 for now to ensure correct value
+      budget: 9000000,
     });
 
     await user.save();
@@ -171,6 +189,9 @@ export const createPredefinedUser = async () => {
       message: "Successfully created predefined user with team",
       userCreated: true,
       teamSize: players.length,
+      playerValues: players.map((p) => ({ name: p.name, value: p.value })),
+      totalPlayerValue,
+      finalBudget: user.budget,
     };
   } catch (error) {
     console.error("Error creating predefined user:", error);

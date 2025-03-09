@@ -4,6 +4,7 @@ import User from "@/app/lib/models/user";
 import Player from "@/app/lib/models/player";
 import { authenticateRequest } from "@/app/lib/utils/auth";
 import { sendUpdateToUser } from "../../../updates/route";
+import { calculatePlayerValueServer } from "@/app/lib/utils/playerValueServer";
 
 export async function POST(req: NextRequest) {
   try {
@@ -51,10 +52,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Use the provided player value if available (for dynamically calculated values)
-    // Otherwise use the value from the database
+    // Use our shared utility to calculate player value consistently
     const valueToRefund =
-      playerValue !== undefined ? playerValue : player.value;
+      playerValue !== undefined
+        ? playerValue
+        : calculatePlayerValueServer(player);
 
     // Remove player from team and refund budget
     user.team.splice(playerIndex, 1);
