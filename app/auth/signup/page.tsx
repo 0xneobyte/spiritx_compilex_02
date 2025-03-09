@@ -202,8 +202,16 @@ export default function SignupPage() {
               </div>
             </CardContent>
 
-            <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-2 pb-6">
-              <div className="text-sm w-full sm:w-auto">
+            <CardFooter className="flex flex-col justify-between items-center gap-4 pt-2 pb-6">
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl"
+              >
+                {loading ? "Creating account..." : "Create account"}
+              </Button>
+
+              <div className="text-sm w-full text-center mt-4">
                 <span className="text-gray-600">Already have an account? </span>
                 <Link
                   href="/auth/login"
@@ -212,14 +220,6 @@ export default function SignupPage() {
                   Sign in
                 </Link>
               </div>
-
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl"
-              >
-                {loading ? "Creating account..." : "Create account"}
-              </Button>
             </CardFooter>
           </form>
         </Card>

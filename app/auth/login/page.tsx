@@ -149,26 +149,24 @@ export default function LoginPage() {
               </div>
             </CardContent>
 
-            <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-2 pb-6">
-              <div className="text-sm w-full sm:w-auto">
-                <p className="text-sm text-muted-foreground">
-                  Don&apos;t have an account?{" "}
-                  <Link
-                    href="/auth/signup"
-                    className="text-primary hover:underline"
-                  >
-                    Sign up
-                  </Link>
-                </p>
-              </div>
-
+            <CardFooter className="flex flex-col justify-between items-center gap-4 pt-2 pb-6">
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl"
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl"
               >
                 {loading ? "Signing in..." : "Sign in"}
               </Button>
+
+              <div className="text-sm w-full text-center mt-4">
+                <span className="text-gray-600">Don't have an account? </span>
+                <Link
+                  href="/auth/signup"
+                  className="text-purple-600 hover:text-purple-500 font-medium"
+                >
+                  Sign up
+                </Link>
+              </div>
             </CardFooter>
           </form>
         </Card>
